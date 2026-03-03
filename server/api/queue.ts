@@ -498,11 +498,13 @@ export const queueRouter = router({
    */
   feedsToUpdate: protectedProcedure
     .input(z.object({
-      limit: z.number().min(1).max(50).default(10),
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
     }).optional())
     .query(async ({ input, ctx }) => {
       const userId = ctx.userId!;
-      const limit = input?.limit ?? 10;
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
 
       const feeds = await db.feed.findMany({
         where: {
@@ -536,10 +538,24 @@ export const queueRouter = router({
           },
         },
         orderBy: [
+          { errorCount: 'desc' }, // 有错误的优先显示
           { nextFetchAt: 'asc' },
           { lastFetchedAt: 'asc' },
         ],
+        skip: offset,
         take: limit,
+      });
+
+      // 获取总数
+      const total = await db.feed.count({
+        where: {
+          userId,
+          isActive: true,
+          OR: [
+            { nextFetchAt: null },
+            { nextFetchAt: { lte: new Date() } },
+          ],
+        },
       });
 
       // 计算待更新时间
@@ -556,7 +572,11 @@ export const queueRouter = router({
         };
       });
 
-      return feedsWithStatus;
+      return {
+        feeds: feedsWithStatus,
+        total,
+        hasMore: offset + feeds.length < total,
+      };
     }),
 
   /**

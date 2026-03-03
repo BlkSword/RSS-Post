@@ -71,13 +71,20 @@ function QueueStatusIndicatorComponent() {
   });
 
   // 获取待更新订阅源（展开时加载）
-  const { data: feedsToUpdate } = trpc.queue.feedsToUpdate.useQuery(
-    { limit: 15 },
+  const [feedPage, setFeedPage] = useState(0);
+  const pageSize = 20;
+
+  const { data: feedsToUpdateData, isLoading: isLoadingFeeds } = trpc.queue.feedsToUpdate.useQuery(
+    { limit: pageSize, offset: feedPage * pageSize },
     {
       refetchInterval: 10000,
       enabled: isExpanded && activeTab === 'feeds',
     }
   );
+
+  const feedsToUpdate = feedsToUpdateData?.feeds ?? [];
+  const totalFeedsToUpdate = feedsToUpdateData?.total ?? 0;
+  const hasMoreFeeds = feedsToUpdateData?.hasMore ?? false;
 
   useEffect(() => {
     if (monitor) {
@@ -194,7 +201,10 @@ function QueueStatusIndicatorComponent() {
                 {/* Tab 切换 */}
                 <div className="flex gap-1 mt-3">
                   <button
-                    onClick={() => setActiveTab('overview')}
+                    onClick={() => {
+                      setActiveTab('overview');
+                      setFeedPage(0);
+                    }}
                     className={cn(
                       'flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
                       activeTab === 'overview'
@@ -205,7 +215,10 @@ function QueueStatusIndicatorComponent() {
                     概览
                   </button>
                   <button
-                    onClick={() => setActiveTab('feeds')}
+                    onClick={() => {
+                      setActiveTab('feeds');
+                      setFeedPage(0);
+                    }}
                     className={cn(
                       'flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1',
                       activeTab === 'feeds'
@@ -395,14 +408,31 @@ function QueueStatusIndicatorComponent() {
                 ) : (
                   /* 待更新订阅源列表 */
                   <div>
-                    {feedsToUpdate && feedsToUpdate.length > 0 ? (
+                    {isLoadingFeeds ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        <p className="text-sm">加载中...</p>
+                      </div>
+                    ) : feedsToUpdate && feedsToUpdate.length > 0 ? (
                       <div className="space-y-2">
+                        {/* 总数统计 */}
+                        <div className="flex items-center justify-between px-1 mb-2">
+                          <span className="text-xs text-muted-foreground">
+                            共 {totalFeedsToUpdate} 个待更新
+                          </span>
+                          {totalFeedsToUpdate > pageSize && (
+                            <span className="text-xs text-muted-foreground">
+                              第 {feedPage + 1} / {Math.ceil(totalFeedsToUpdate / pageSize)} 页
+                            </span>
+                          )}
+                        </div>
+
                         {feedsToUpdate.map((feed, index) => (
                           <motion.div
                             key={feed.id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
+                            transition={{ delay: index * 0.02 }}
                             className={cn(
                               'flex items-start gap-3 p-3 rounded-lg border transition-colors',
                               feed.hasError
@@ -437,7 +467,9 @@ function QueueStatusIndicatorComponent() {
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm truncate">{feed.title}</p>
                                 {feed.hasError && (
-                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-600">
+                                    错误 x{feed.errorCount}
+                                  </span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -449,10 +481,13 @@ function QueueStatusIndicatorComponent() {
                                   }
                                 </span>
                               </div>
+                              {/* 完整错误显示 */}
                               {feed.hasError && feed.lastError && (
-                                <p className="text-xs text-red-500/80 mt-1 truncate">
-                                  错误: {feed.lastError}
-                                </p>
+                                <div className="mt-2 p-2 rounded bg-red-100/50 border border-red-200/50">
+                                  <p className="text-xs text-red-700 break-all">
+                                    {feed.lastError}
+                                  </p>
+                                </div>
                               )}
                               {feed.category && (
                                 <div className="mt-1.5">
@@ -486,10 +521,28 @@ function QueueStatusIndicatorComponent() {
                           </motion.div>
                         ))}
 
-                        {feeds.toUpdate > feedsToUpdate.length && (
-                          <p className="text-xs text-center text-muted-foreground py-2">
-                            还有 {feeds.toUpdate - feedsToUpdate.length} 个订阅源待更新
-                          </p>
+                        {/* 分页控制 */}
+                        {totalFeedsToUpdate > pageSize && (
+                          <div className="flex items-center justify-center gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={feedPage === 0}
+                              onClick={() => setFeedPage(p => Math.max(0, p - 1))}
+                            >
+                              上一页
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={!hasMoreFeeds}
+                              onClick={() => setFeedPage(p => p + 1)}
+                            >
+                              下一页
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ) : (

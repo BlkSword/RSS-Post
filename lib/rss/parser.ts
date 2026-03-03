@@ -85,6 +85,51 @@ async function limitConcurrency<T>(
 }
 
 /**
+ * 规范化 author 字段为字符串
+ * 处理 Atom feed 中复杂的 author 对象结构
+ */
+function normalizeAuthor(author: unknown): string | undefined {
+  if (!author) return undefined;
+
+  // 已经是字符串
+  if (typeof author === 'string') {
+    return author.trim() || undefined;
+  }
+
+  // 处理对象结构（Atom feed 格式）
+  if (typeof author === 'object') {
+    const authObj = author as Record<string, unknown>;
+
+    // 提取 name 字段
+    if (authObj.name) {
+      if (Array.isArray(authObj.name)) {
+        // name 可能是数组
+        const name = authObj.name.find(n => typeof n === 'string' && n.trim());
+        if (name) return String(name).trim();
+      } else if (typeof authObj.name === 'string') {
+        return authObj.name.trim() || undefined;
+      }
+    }
+
+    // 尝试其他常见字段
+    if (typeof authObj.email === 'string') {
+      return authObj.email.trim() || undefined;
+    }
+
+    // 最后尝试 JSON 序列化（不太理想但比报错好）
+    try {
+      const jsonStr = JSON.stringify(author);
+      // 如果太长就截断
+      return jsonStr.length > 200 ? jsonStr.slice(0, 200) + '...' : jsonStr;
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * RSS解析器类
  */
 export class RSSParser {
@@ -234,6 +279,9 @@ export class RSSParser {
               author = contentMetadata.author;
             }
 
+            // 规范化 author 为字符串
+            const normalizedAuthor = normalizeAuthor(author);
+
             // 提取图片
             const image = this.extractImage(item, content);
 
@@ -250,7 +298,7 @@ export class RSSParser {
               pubDate,
               content: content || undefined,
               contentSnippet,
-              author,
+              author: normalizedAuthor,
               categories,
               guid: item.guid || item.id,
               isoDate: item.isoDate,
@@ -277,7 +325,7 @@ export class RSSParser {
               pubDate: (item as any).pubDate ? new Date((item as any).pubDate) : undefined,
               content: (item as any).content || (item as any)['content:encoded'] || undefined,
               contentSnippet: (item as any).contentSnippet || '',
-              author: (item as any).author || (item as any).creator || undefined,
+              author: normalizeAuthor((item as any).author || (item as any).creator),
               categories: this.extractCategories(item),
               guid: (item as any).guid,
             } as ParsedEntry;

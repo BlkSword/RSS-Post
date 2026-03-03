@@ -1,7 +1,3 @@
-// =====================================================
-// Rss-Easy 数据库模型定义
-// =====================================================
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,69 +7,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =====================================================
-// 1. 用户管理
-// =====================================================
-
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  username      String    @unique
-  passwordHash  String    @map("password_hash")
-  avatarUrl     String?   @map("avatar_url")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  // 用户角色
-  role          String    @default("user") @map("role") // 'super_admin', 'admin', 'editor', 'user'
-
-  // 用户偏好设置
-  preferences   Json      @default("{}")
-  // AI配置
-  aiConfig      Json      @default("{}") @map("ai_config")
-  // 邮件配置
-  emailConfig   Json      @default("{}") @map("email_config")
-
-  // 关联关系
-  feeds         Feed[]
-  categories    Category[]
-  readingHistory ReadingHistory[]
-  readingSessions ReadingSession[]
-  userPreference UserPreference?
-  searchHistory  SearchHistory[]
-  reports       Report[]
-  reportSchedules ReportSchedule[]
-  notifications  Notification[]
-  apiKeys       ApiKey[]
-  subscriptionRules SubscriptionRule[]
-
-  // 密码重置相关字段
-  passwordResetToken     String?   @map("password_reset_token")
-  passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
-  passwordResetCount     Int       @default(0) @map("password_reset_count")
+  id                     String             @id @default(uuid())
+  email                  String             @unique
+  username               String             @unique
+  passwordHash           String             @map("password_hash")
+  avatarUrl              String?            @map("avatar_url")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+  role                   String             @default("user") @map("role")
+  preferences            Json               @default("{}")
+  aiConfig               Json               @default("{}") @map("ai_config")
+  emailConfig            Json               @default("{}") @map("email_config")
+  passwordResetToken     String?            @map("password_reset_token")
+  passwordResetExpiresAt DateTime?          @map("password_reset_expires_at")
+  passwordResetCount     Int                @default(0) @map("password_reset_count")
+  apiKeys                ApiKey[]
+  categories             Category[]
+  feeds                  Feed[]
+  notifications          Notification[]
+  readingHistory         ReadingHistory[]
+  readingSessions        ReadingSession[]
+  reportSchedules        ReportSchedule[]
+  reports                Report[]
+  searchHistory          SearchHistory[]
+  subscriptionRules      SubscriptionRule[]
+  userPreference         UserPreference?
 
   @@map("users")
 }
 
-// =====================================================
-// 2. 分类管理
-// =====================================================
-
 model Category {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
   name        String
-  description String?   @db.Text
-  color       String?   // HEX颜色值
+  description String?
+  color       String?
   icon        String?
-  parentId    String?   @map("parent_id")
-  sortOrder   Int       @default(0) @map("sort_order")
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  // 关联关系
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  parentId    String?    @map("parent_id")
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   feeds       Feed[]
 
   @@unique([userId, name])
@@ -82,219 +58,136 @@ model Category {
   @@map("categories")
 }
 
-// =====================================================
-// 3. RSS源管理
-// =====================================================
-
 model Feed {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-  categoryId      String?   @map("category_id")
-
-  // Feed基本信息
-  title           String
-  description     String?   @db.Text
-  feedUrl         String    @map("feed_url")
-  siteUrl         String?   @map("site_url")
-  iconUrl         String?   @map("icon_url")
-  faviconUrl      String?   @map("favicon_url")
-
-  // 抓取状态
-  lastFetchedAt   DateTime? @map("last_fetched_at")
-  lastSuccessAt   DateTime? @map("last_success_at")
-  nextFetchAt     DateTime? @map("next_fetch_at")
-  fetchInterval   Int       @default(3600) @map("fetch_interval") // 秒
-
-  // HTTP缓存支持
-  etag            String?
-  lastModified    String?   @map("last_modified")
-
-  // 错误处理
-  errorCount      Int       @default(0) @map("error_count")
-  lastError       String?   @map("last_error") @db.Text
-  isActive        Boolean   @default(true) @map("is_active")
-
-  // Feed统计
-  totalEntries    Int       @default(0) @map("total_entries")
-  unreadCount     Int       @default(0) @map("unread_count")
-
-  // Feed优先级
-  priority        Int       @default(5) // 1-10, 10最高
-
-  // 标签
-  tags            String[]  @default([])
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  entries         Entry[]
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  categoryId    String?   @map("category_id")
+  title         String
+  description   String?
+  feedUrl       String    @map("feed_url")
+  siteUrl       String?   @map("site_url")
+  iconUrl       String?   @map("icon_url")
+  faviconUrl    String?   @map("favicon_url")
+  lastFetchedAt DateTime? @map("last_fetched_at")
+  lastSuccessAt DateTime? @map("last_success_at")
+  nextFetchAt   DateTime? @map("next_fetch_at")
+  fetchInterval Int       @default(3600) @map("fetch_interval")
+  etag          String?
+  lastModified  String?   @map("last_modified")
+  errorCount    Int       @default(0) @map("error_count")
+  lastError     String?   @map("last_error")
+  isActive      Boolean   @default(true) @map("is_active")
+  totalEntries  Int       @default(0) @map("total_entries")
+  unreadCount   Int       @default(0) @map("unread_count")
+  priority      Int       @default(5)
+  tags          String[]  @default([])
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  entries       Entry[]
+  category      Category? @relation(fields: [categoryId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, feedUrl])
   @@index([userId])
   @@index([categoryId])
   @@index([lastFetchedAt])
   @@index([nextFetchAt])
-  // 复合索引优化查询
-  @@index([userId, isActive])           // 查询用户活跃订阅源
-  @@index([userId, priority])           // 按优先级排序
+  @@index([userId, isActive])
+  @@index([userId, priority])
   @@map("feeds")
 }
 
-// =====================================================
-// 4. 文章管理
-// =====================================================
-
 model Entry {
-  id                String    @id @default(uuid())
-  feedId            String    @map("feed_id")
-
-  // 文章基本信息
-  title             String
-  url               String
-  content           String?   @db.Text
-  summary           String?   @db.Text
-  excerpt           String?   @db.Text
-
-  // 作者信息
-  author            String?
-  authorUrl         String?   @map("author_url")
-
-  // 时间信息
-  publishedAt       DateTime? @map("published_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-
-  // 去重
-  contentHash       String    @map("content_hash") @unique
-
-  // 阅读状态
-  isRead            Boolean   @default(false) @map("is_read")
-  isStarred         Boolean   @default(false) @map("is_starred")
-  isArchived        Boolean   @default(false) @map("is_archived")
-  readAt            DateTime? @map("read_at")
-
-  // AI增强信息
-  aiSummary         String?   @map("ai_summary") @db.Text
-  aiKeywords        String[]  @default([]) @map("ai_keywords")
-  aiSentiment       String?   @map("ai_sentiment")
-  aiCategory        String?   @map("ai_category")
-  aiImportanceScore Float     @default(0) @map("ai_importance_score")
-
-  // 向量嵌入（语义搜索）
-  titleEmbedding    Bytes?    @map("title_embedding") @db.ByteA
-  contentEmbedding  Bytes?    @map("content_embedding") @db.ByteA
-
-  // 自定义标签
-  tags              String[]  @default([])
-
-  // 附件
-  hasMedia          Boolean   @default(false) @map("has_media")
-  mainImageUrl      String?   @map("main_image_url")
-
-  // 阅读时间估算
-  readingTime       Int?      @map("reading_time") // 秒
-
-  // =====================================================
-  // AI-Native 深度分析字段（新增）
-  // =====================================================
-
-  // 增强分析结果
-  aiOneLineSummary   String?   @map("ai_one_line_summary") @db.Text           // 一句话总结
-  aiMainPoints       Json?     @map("ai_main_points")                           // 主要观点 [{point, explanation, importance}]
-  aiKeyQuotes        Json?     @map("ai_key_quotes")                            // 关键引用 [{quote, significance}]
-  aiScoreDimensions  Json?     @map("ai_score_dimensions")                      // 评分维度 {depth, quality, practicality, novelty}
-
-  // 分析元数据
-  aiAnalysisModel    String?   @map("ai_analysis_model")                        // 使用的模型组合
-  aiProcessingTime   Int?      @map("ai_processing_time")                       // 处理耗时(ms)
-  aiReflectionRounds Int       @default(0) @map("ai_reflection_rounds")         // 反思轮数
-  aiAnalyzedAt       DateTime? @map("ai_analyzed_at")                           // 深度分析时间
-
-  // =====================================================
-  // 文章元信息（新增）
-  // =====================================================
-
-  // 文章统计信息
-  contentLength      Int?      @map("content_length")                           // 内容长度（字符数）
-  wordCount          Int?      @map("word_count")                               // 字数统计
-
-  // 开源信息
-  isOpenSource       Boolean?  @map("is_open_source")                           // 是否开源项目
-  openSourceRepo     String?   @map("open_source_repo")                         // 开源仓库地址
-  openSourceLicense  String?   @map("open_source_license")                      // 开源许可证类型
-  openSourceStars    Int?      @map("open_source_stars")                        // Star 数
-  openSourceLanguage String?   @map("open_source_language")                     // 主要编程语言
-
-  // =====================================================
-  // 初评字段（BestBlogs 改进）
-  // =====================================================
-
-  // 初评结果
-  aiPrelimIgnore      Boolean?  @map("ai_prelim_ignore")                         // 是否忽略（低质内容）
-  aiPrelimReason      String?   @map("ai_prelim_reason") @db.Text               // 主题描述
-  aiPrelimValue       Int?      @map("ai_prelim_value")                          // 价值评分 1-5
-  aiPrelimSummary     String?   @map("ai_prelim_summary") @db.Text              // 一句话总结
-  aiPrelimLanguage    String?   @map("ai_prelim_language")                       // 语言类型 'zh', 'en', 'other'
-  aiPrelimStatus      String?   @map("ai_prelim_status")                         // 初评状态 'pending', 'passed', 'rejected'
-  aiPrelimAnalyzedAt  DateTime? @map("ai_prelim_analyzed_at")                    // 初评时间
-  aiPrelimModel       String?   @map("ai_prelim_model")                          // 初评使用的模型
-
-  // 关联关系
-  feed              Feed              @relation(fields: [feedId], references: [id], onDelete: Cascade)
-  readingHistory    ReadingHistory[]
-  readingSessions   ReadingSession[]
-  reportEntries     ReportEntry[]
-  aiAnalysisQueue   AIAnalysisQueue[]
-  sourceRelations   ArticleRelation[] @relation("SourceRelations")
-  targetRelations   ArticleRelation[] @relation("TargetRelations")
-  feedbacks         AnalysisFeedback[]
+  id                 String             @id @default(uuid())
+  feedId             String             @map("feed_id")
+  title              String
+  url                String
+  content            String?
+  summary            String?
+  excerpt            String?
+  author             String?
+  authorUrl          String?            @map("author_url")
+  publishedAt        DateTime?          @map("published_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  contentHash        String             @unique @map("content_hash")
+  isRead             Boolean            @default(false) @map("is_read")
+  isStarred          Boolean            @default(false) @map("is_starred")
+  isArchived         Boolean            @default(false) @map("is_archived")
+  readAt             DateTime?          @map("read_at")
+  aiSummary          String?            @map("ai_summary")
+  aiKeywords         String[]           @default([]) @map("ai_keywords")
+  aiSentiment        String?            @map("ai_sentiment")
+  aiCategory         String?            @map("ai_category")
+  aiImportanceScore  Float              @default(0) @map("ai_importance_score")
+  titleEmbedding     Bytes?             @map("title_embedding")
+  contentEmbedding   Bytes?             @map("content_embedding")
+  tags               String[]           @default([])
+  hasMedia           Boolean            @default(false) @map("has_media")
+  mainImageUrl       String?            @map("main_image_url")
+  readingTime        Int?               @map("reading_time")
+  aiOneLineSummary   String?            @map("ai_one_line_summary")
+  aiMainPoints       Json?              @map("ai_main_points")
+  aiKeyQuotes        Json?              @map("ai_key_quotes")
+  aiScoreDimensions  Json?              @map("ai_score_dimensions")
+  aiAnalysisModel    String?            @map("ai_analysis_model")
+  aiProcessingTime   Int?               @map("ai_processing_time")
+  aiReflectionRounds Int                @default(0) @map("ai_reflection_rounds")
+  aiAnalyzedAt       DateTime?          @map("ai_analyzed_at")
+  contentLength      Int?               @map("content_length")
+  wordCount          Int?               @map("word_count")
+  isOpenSource       Boolean?           @map("is_open_source")
+  openSourceRepo     String?            @map("open_source_repo")
+  openSourceLicense  String?            @map("open_source_license")
+  openSourceStars    Int?               @map("open_source_stars")
+  openSourceLanguage String?            @map("open_source_language")
+  aiPrelimIgnore     Boolean?           @map("ai_prelim_ignore")
+  aiPrelimReason     String?            @map("ai_prelim_reason")
+  aiPrelimValue      Int?               @map("ai_prelim_value")
+  aiPrelimSummary    String?            @map("ai_prelim_summary")
+  aiPrelimLanguage   String?            @map("ai_prelim_language")
+  aiPrelimStatus     String?            @map("ai_prelim_status")
+  aiPrelimAnalyzedAt DateTime?          @map("ai_prelim_analyzed_at")
+  aiPrelimModel      String?            @map("ai_prelim_model")
+  aiAnalysisQueue    AIAnalysisQueue[]
+  feedbacks          AnalysisFeedback[]
+  sourceRelations    ArticleRelation[]  @relation("SourceRelations")
+  targetRelations    ArticleRelation[]  @relation("TargetRelations")
+  feed               Feed               @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  readingHistory     ReadingHistory[]
+  readingSessions    ReadingSession[]
+  reportEntries      ReportEntry[]
 
   @@index([feedId])
   @@index([publishedAt])
   @@index([isRead])
   @@index([isStarred])
   @@index([contentHash])
-  // 复合索引优化常用查询
-  @@index([feedId, publishedAt(sort: Desc)])        // 按订阅源查询文章列表（时间倒序）
-  @@index([feedId, isRead, publishedAt(sort: Desc)]) // 按订阅源查询未读文章（优化）
-  @@index([createdAt(sort: Desc)])                  // 按创建时间排序
-  @@index([aiImportanceScore(sort: Desc)])          // 按重要度排序
-  @@index([aiCategory])                             // 按AI分类筛选
-  @@index([isArchived, createdAt(sort: Desc)])      // 归档文章查询
-  @@index([isStarred, createdAt(sort: Desc)])       // 星标文章查询
-  @@index([aiPrelimStatus, aiPrelimValue(sort: Desc)]) // 初评文章查询优化
-  @@index([aiPrelimAnalyzedAt])                     // 初评时间索引
+  @@index([feedId, publishedAt(sort: Desc)])
+  @@index([feedId, isRead, publishedAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([aiImportanceScore(sort: Desc)])
+  @@index([aiCategory])
+  @@index([isArchived, createdAt(sort: Desc)])
+  @@index([isStarred, createdAt(sort: Desc)])
+  @@index([aiPrelimStatus, aiPrelimValue(sort: Desc)])
+  @@index([aiPrelimAnalyzedAt])
   @@map("entries")
 }
 
-// =====================================================
-// 5. 阅读历史
-// =====================================================
-
 model ReadingHistory {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-  entryId         String    @map("entry_id")
-
-  // 阅读进度
-  readProgress    Int       @default(0) @map("read_progress") // 百分比 0-100
-  scrollPosition  Int       @default(0) @map("scroll_position")
-  readingTime     Int       @default(0) @map("reading_time") // 实际阅读时长（秒）
-
-  // 阅读状态时间戳
-  firstOpenedAt   DateTime  @default(now()) @map("first_opened_at")
-  lastOpenedAt    DateTime  @default(now()) @map("last_opened_at")
-  completedAt     DateTime? @map("completed_at")
-
-  // 阅读来源
-  source          String    // 'feed', 'search', 'recommendation', 'report'
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entry           Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  entryId        String    @map("entry_id")
+  readProgress   Int       @default(0) @map("read_progress")
+  scrollPosition Int       @default(0) @map("scroll_position")
+  readingTime    Int       @default(0) @map("reading_time")
+  firstOpenedAt  DateTime  @default(now()) @map("first_opened_at")
+  lastOpenedAt   DateTime  @default(now()) @map("last_opened_at")
+  completedAt    DateTime? @map("completed_at")
+  source         String
+  entry          Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entryId])
   @@index([userId])
@@ -303,118 +196,76 @@ model ReadingHistory {
   @@map("reading_history")
 }
 
-// =====================================================
-// 6. 搜索历史
-// =====================================================
-
 model SearchHistory {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-  query           String    @db.Text
-  filters         Json?
-  resultsCount    Int?      @map("results_count")
-  clickedEntryId  String?   @map("clicked_entry_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  query          String
+  filters        Json?
+  resultsCount   Int?     @map("results_count")
+  clickedEntryId String?  @map("clicked_entry_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
   @@map("search_history")
 }
 
-// =====================================================
-// 7. AI分析队列
-// =====================================================
-
 model AIAnalysisQueue {
-  id              String    @id @default(uuid())
-  entryId         String    @map("entry_id")
-
-  analysisType    String    @map("analysis_type") // 'summary', 'category', 'keywords', 'sentiment', 'all'
-  priority        Int       @default(5)
-  status          String    @default("pending") // 'pending', 'processing', 'completed', 'failed'
-
-  // AI请求信息
-  provider        String?   // 'openai', 'anthropic', 'deepseek'
-  model           String?
-  promptTokens    Int?      @map("prompt_tokens")
-  completionTokens Int?     @map("completion_tokens")
-  totalTokens     Int?      @map("total_tokens")
-  cost            Decimal?  @db.Decimal(10, 6)
-
-  // 错误处理
-  errorMessage    String?   @map("error_message") @db.Text
-  retryCount      Int       @default(0) @map("retry_count")
-  maxRetries      Int       @default(3) @map("max_retries")
-
-  // 时间戳
-  createdAt       DateTime  @default(now()) @map("created_at")
-  startedAt       DateTime? @map("started_at")
-  completedAt     DateTime? @map("completed_at")
-  nextRetryAt     DateTime? @map("next_retry_at")
-
-  // 关联关系
-  entry           Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  entryId          String    @map("entry_id")
+  analysisType     String    @map("analysis_type")
+  priority         Int       @default(5)
+  status           String    @default("pending")
+  provider         String?
+  model            String?
+  promptTokens     Int?      @map("prompt_tokens")
+  completionTokens Int?      @map("completion_tokens")
+  totalTokens      Int?      @map("total_tokens")
+  cost             Decimal?  @db.Decimal(10, 6)
+  errorMessage     String?   @map("error_message")
+  retryCount       Int       @default(0) @map("retry_count")
+  maxRetries       Int       @default(3) @map("max_retries")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  nextRetryAt      DateTime? @map("next_retry_at")
+  entry            Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
 
   @@index([entryId])
   @@index([status])
   @@index([nextRetryAt])
-  @@index([status, priority(sort: Desc), createdAt(sort: Asc)]) // 队列处理优化
-  @@index([status, nextRetryAt]) // 重试队列优化
+  @@index([status, priority(sort: Desc), createdAt])
+  @@index([status, nextRetryAt])
   @@map("ai_analysis_queue")
 }
 
-// =====================================================
-// 8. 日报/周报管理
-// =====================================================
-
 model Report {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-
-  // 报告类型
-  reportType      String    @map("report_type") // 'daily', 'weekly'
-  reportDate      DateTime  @map("report_date") @db.Date
-
-  // 报告状态
-  status          String    @default("pending") // 'pending', 'generating', 'completed', 'failed'
-  progress        Int       @default(0) @map("progress") // 0-100
-  currentStep     String?   @map("current_step") // 当前步骤描述
-  errorMessage    String?   @map("error_message") // 错误信息
-
-  // 生成步骤记录
-  steps           Json?     @map("steps") // [{step: string, status: 'pending'|'doing'|'done'|'error', message?: string, timestamp: Date}]
-
-  // 报告内容
-  title           String
-  summary         String?   @db.Text
-  highlights      String[]  @default([])
-  topics          Json?
-
-  // 统计数据
-  totalEntries    Int       @default(0) @map("total_entries")
-  totalFeeds      Int       @default(0) @map("total_feeds")
-
-  // 报告格式
-  format          String    @default("markdown") // 'markdown', 'html', 'json'
-  content         String?   @db.Text
-
-  // AI生成信息
-  aiGenerated     Boolean   @default(false) @map("ai_generated")
-  aiModel         String?   @map("ai_model")
-
-  // 分享设置
-  isPublic        Boolean   @default(false) @map("is_public")
-  shareToken      String?   @unique @map("share_token")
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries         ReportEntry[]
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  reportType   String        @map("report_type")
+  reportDate   DateTime      @map("report_date") @db.Date
+  status       String        @default("pending")
+  progress     Int           @default(0) @map("progress")
+  currentStep  String?       @map("current_step")
+  errorMessage String?       @map("error_message")
+  steps        Json?         @map("steps")
+  title        String
+  summary      String?
+  highlights   String[]      @default([])
+  topics       Json?
+  totalEntries Int           @default(0) @map("total_entries")
+  totalFeeds   Int           @default(0) @map("total_feeds")
+  format       String        @default("markdown")
+  content      String?
+  aiGenerated  Boolean       @default(false) @map("ai_generated")
+  aiModel      String?       @map("ai_model")
+  isPublic     Boolean       @default(false) @map("is_public")
+  shareToken   String?       @unique @map("share_token")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  entries      ReportEntry[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, reportType, reportDate])
   @@index([userId])
@@ -423,65 +274,42 @@ model Report {
   @@map("reports")
 }
 
-// 报告文章关联表
 model ReportEntry {
-  id              String    @id @default(uuid())
-  reportId        String    @map("report_id")
-  entryId         String    @map("entry_id")
-
-  // 文章在报告中的属性
-  section         String    // 'highlights', 'topic', 'recommendation'
-  rank            Int       @default(0)
-  notes           String?   @db.Text
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  // 关联关系
-  report          Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  entry           Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  reportId  String   @map("report_id")
+  entryId   String   @map("entry_id")
+  section   String
+  rank      Int      @default(0)
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@unique([reportId, entryId])
   @@index([reportId])
   @@map("report_entries")
 }
 
-// =====================================================
-// 8.5 报告定时任务
-// =====================================================
-
 model ReportSchedule {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-
-  // 任务名称
-  name            String
-
-  // 执行时间设置
-  firstRunAt      DateTime  @map("first_run_at") // 首次执行时间
-  frequency       String    // 'once', 'daily', 'weekly', 'monthly'
-  nextRunAt       DateTime? @map("next_run_at") // 下次执行时间
-  lastRunAt       DateTime? @map("last_run_at") // 上次执行时间
-
-  // 报告内容设置
-  dateRange       String    @map("date_range") // 'yesterday', 'last7days', 'last30days', 'lastWeek', 'lastMonth', 'custom'
-  customDays      Int?      @map("custom_days") // 自定义天数
-  includeStats    Boolean   @default(true) @map("include_stats") // 包含阅读统计
-  includeHighlights Boolean @default(true) @map("include_highlights") // 包含精选内容
-  includeAiSummary  Boolean @default(true) @map("include_ai_summary") // 包含AI摘要
-
-  // 发送设置
-  recipientEmail  String    @map("recipient_email") // 接收邮箱
-  emailSubject    String?   @map("email_subject") // 邮件主题（可选，有默认值）
-
-  // 任务状态
-  isEnabled       Boolean   @default(true) @map("is_enabled")
-  runCount        Int       @default(0) @map("run_count") // 执行次数
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  name              String
+  firstRunAt        DateTime  @map("first_run_at")
+  frequency         String
+  nextRunAt         DateTime? @map("next_run_at")
+  lastRunAt         DateTime? @map("last_run_at")
+  dateRange         String    @map("date_range")
+  customDays        Int?      @map("custom_days")
+  includeStats      Boolean   @default(true) @map("include_stats")
+  includeHighlights Boolean   @default(true) @map("include_highlights")
+  includeAiSummary  Boolean   @default(true) @map("include_ai_summary")
+  recipientEmail    String    @map("recipient_email")
+  emailSubject      String?   @map("email_subject")
+  isEnabled         Boolean   @default(true) @map("is_enabled")
+  runCount          Int       @default(0) @map("run_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isEnabled])
@@ -489,25 +317,17 @@ model ReportSchedule {
   @@map("report_schedules")
 }
 
-// =====================================================
-// 9. 通知管理
-// =====================================================
-
 model Notification {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-
-  type            String    // 'new_entry', 'report_ready', 'feed_error'
-  title           String
-  content         String?   @db.Text
-  data            Json?
-
-  isRead          Boolean   @default(false) @map("is_read")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  readAt          DateTime? @map("read_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  content   String?
+  data      Json?
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
@@ -515,91 +335,57 @@ model Notification {
   @@map("notifications")
 }
 
-// =====================================================
-// 10. 订阅规则
-// =====================================================
-
 model SubscriptionRule {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-
-  name            String
-  isEnabled       Boolean   @default(true) @map("is_enabled")
-
-  // 规则条件
-  conditions      Json
-  // 执行动作
-  actions         Json
-
-  // 规则统计
-  matchedCount    Int       @default(0) @map("matched_count")
-  lastMatchedAt   DateTime? @map("last_matched_at")
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  name          String
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  conditions    Json
+  actions       Json
+  matchedCount  Int       @default(0) @map("matched_count")
+  lastMatchedAt DateTime? @map("last_matched_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isEnabled])
   @@map("subscription_rules")
 }
 
-// =====================================================
-// 11. API密钥管理
-// =====================================================
-
 model ApiKey {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-
-  name            String
-  keyHash         String    @unique @map("key_hash")
-  keyPrefix       String    @map("key_prefix")
-  scopes          String[]  @default(["read", "write"])
-  isActive        Boolean   @default(true) @map("is_active")
-
-  lastUsedAt      DateTime? @map("last_used_at")
-  expiresAt       DateTime? @map("expires_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  // 关联关系
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  name       String
+  keyHash    String    @unique @map("key_hash")
+  keyPrefix  String    @map("key_prefix")
+  scopes     String[]  @default(["read", "write"])
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([keyHash])
   @@map("api_keys")
 }
 
-// =====================================================
-// 12. 用户阅读行为（AI-Native 新增）
-// =====================================================
-
 model ReadingSession {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  entryId     String    @map("entry_id")
-
-  // 阅读行为数据
-  startedAt   DateTime  @default(now()) @map("started_at")
-  endedAt     DateTime? @map("ended_at")
-  dwellTime   Int       @default(0) @map("dwell_time")      // 停留秒数
-  scrollDepth Float     @default(0) @map("scroll_depth")    // 滚动深度 0-1
-  isCompleted Boolean   @default(false) @map("is_completed") // 是否阅读到底部
-
-  // 交互数据
-  isStarred   Boolean   @default(false) @map("is_starred")
-  rating      Int?      @map("rating")                      // 用户主动评分 1-5
-
-  // AI分析数据
-  attentionSegments Json?  @map("attention_segments")      // 用户关注段落（基于滚动停留）
-
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  // 关联关系
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entry       Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  entryId           String    @map("entry_id")
+  startedAt         DateTime  @default(now()) @map("started_at")
+  endedAt           DateTime? @map("ended_at")
+  dwellTime         Int       @default(0) @map("dwell_time")
+  scrollDepth       Float     @default(0) @map("scroll_depth")
+  isCompleted       Boolean   @default(false) @map("is_completed")
+  isStarred         Boolean   @default(false) @map("is_starred")
+  rating            Int?      @map("rating")
+  attentionSegments Json?     @map("attention_segments")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  entry             Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entryId, startedAt])
   @@index([userId, createdAt])
@@ -607,58 +393,34 @@ model ReadingSession {
   @@map("reading_sessions")
 }
 
-// =====================================================
-// 13. 用户偏好画像（AI-Native 新增）
-// =====================================================
-
 model UserPreference {
   id              String   @id @default(uuid())
   userId          String   @unique @map("user_id")
-
-  // 主题权重（动态计算）
-  topicWeights    Json     @default("{}") @map("topic_weights") // {"Rust": 0.8, "AI": 0.9}
-
-  // 阅读偏好
-  preferredDepth  String?  @map("preferred_depth")   // 'deep' | 'medium' | 'light'
-  preferredLength String?  @map("preferred_length")  // 'short' | 'medium' | 'long'
-
-  // 负反馈（不感兴趣）
+  topicWeights    Json     @default("{}") @map("topic_weights")
+  preferredDepth  String?  @map("preferred_depth")
+  preferredLength String?  @map("preferred_length")
   excludedTags    String[] @default([]) @map("excluded_tags")
-
-  // 统计数据
-  totalReadTime   Int      @default(0) @map("total_read_time")   // 总阅读时间（秒）
-  totalEntries    Int      @default(0) @map("total_entries")     // 总阅读文章数
-  avgCompletion   Float    @default(0) @map("avg_completion")    // 平均完成率
-  avgDwellTime    Int      @default(0) @map("avg_dwell_time")   // 平均停留时间
-
-  // 多样性评分
-  diversityScore  Float    @default(0) @map("diversity_score")   // 阅读多样性 0-1
-
+  totalReadTime   Int      @default(0) @map("total_read_time")
+  totalEntries    Int      @default(0) @map("total_entries")
+  avgCompletion   Float    @default(0) @map("avg_completion")
+  avgDwellTime    Int      @default(0) @map("avg_dwell_time")
+  diversityScore  Float    @default(0) @map("diversity_score")
   updatedAt       DateTime @updatedAt @map("updated_at")
-
-  // 关联关系
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_preferences")
 }
 
-// =====================================================
-// 14. 文章关系（知识图谱，AI-Native 新增）
-// =====================================================
-
 model ArticleRelation {
-  id          String   @id @default(uuid())
-  sourceId    String   @map("source_id")
-  targetId    String   @map("target_id")
-  relationType String  @map("relation_type") // 'similar', 'prerequisite', 'contradiction', 'extension'
-  strength    Float    @default(0)           // 关系强度 0-1
-
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // 关联关系
-  sourceEntry Entry    @relation("SourceRelations", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetEntry Entry    @relation("TargetRelations", fields: [targetId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  sourceId     String   @map("source_id")
+  targetId     String   @map("target_id")
+  relationType String   @map("relation_type")
+  strength     Float    @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  sourceEntry  Entry    @relation("SourceRelations", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetEntry  Entry    @relation("TargetRelations", fields: [targetId], references: [id], onDelete: Cascade)
 
   @@unique([sourceId, targetId, relationType])
   @@index([sourceId, relationType])
@@ -667,30 +429,19 @@ model ArticleRelation {
   @@map("article_relations")
 }
 
-// =====================================================
-// 15. 用户分析反馈（反馈改进机制）
-// =====================================================
-
 model AnalysisFeedback {
-  id          String   @id @default(uuid())
-  entryId     String   @map("entry_id")
-  userId      String   @map("user_id")
-
-  // 反馈内容
-  summaryIssue    String?  @map("summary_issue") @db.Text    // 摘要问题描述
-  tagSuggestions  String[] @default([]) @map("tag_suggestions") // 标签建议
-  rating          Int?     @map("rating")                     // 用户评分 1-5
-  isHelpful       Boolean? @map("is_helpful")                 // 是否有帮助
-  comments        String?  @map("comments") @db.Text          // 其他意见
-
-  // 应用状态
-  isApplied    Boolean  @default(false) @map("is_applied")   // 是否已应用到分析
-  appliedAt    DateTime? @map("applied_at")                  // 应用时间
-
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // 关联关系
-  entry       Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  entryId        String    @map("entry_id")
+  userId         String    @map("user_id")
+  summaryIssue   String?   @map("summary_issue")
+  tagSuggestions String[]  @default([]) @map("tag_suggestions")
+  rating         Int?      @map("rating")
+  isHelpful      Boolean?  @map("is_helpful")
+  comments       String?   @map("comments")
+  isApplied      Boolean   @default(false) @map("is_applied")
+  appliedAt      DateTime? @map("applied_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  entry          Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
 
   @@unique([entryId, userId])
   @@index([entryId])
@@ -699,44 +450,24 @@ model AnalysisFeedback {
   @@map("analysis_feedback")
 }
 
-// =====================================================
-// 16. 系统日志（新增）
-// =====================================================
-
 model SystemLog {
-  id          String   @id @default(uuid())
-  
-  // 日志级别
-  level       String   // 'debug', 'info', 'warn', 'error', 'fatal'
-  
-  // 日志分类
-  category    String   // 'system', 'rss', 'ai', 'auth', 'email', 'api', 'queue'
-  
-  // 日志内容
-  message     String   @db.Text
-  details     Json?    // 详细数据
-  
-  // 上下文信息
-  userId      String?  @map("user_id")
-  requestId   String?  @map("request_id")
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  
-  // 错误堆栈
-  stackTrace  String?  @map("stack_trace") @db.Text
-  errorCode   String?  @map("error_code")
-  
-  // 性能指标
-  duration    Int?     // 执行时间(ms)
-  memory      Int?     // 内存使用(bytes)
-  
-  // 元数据
-  source      String?  // 日志来源文件/模块
-  tags        String[] @default([])
-  
-  // 时间戳
-  createdAt   DateTime @default(now()) @map("created_at")
-  
+  id         String   @id @default(uuid())
+  level      String
+  category   String
+  message    String
+  details    Json?
+  userId     String?  @map("user_id")
+  requestId  String?  @map("request_id")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  stackTrace String?  @map("stack_trace")
+  errorCode  String?  @map("error_code")
+  duration   Int?
+  memory     Int?
+  source     String?
+  tags       String[] @default([])
+  createdAt  DateTime @default(now()) @map("created_at")
+
   @@index([level])
   @@index([category])
   @@index([userId])
@@ -746,31 +477,18 @@ model SystemLog {
   @@map("system_logs")
 }
 
-// =====================================================
-// 17. 系统设置（新增）
-// =====================================================
-
 model SystemSettings {
-  id                String   @id @default("system")
-
-  // 初始化状态
-  isInitialized     Boolean  @default(false) @map("is_initialized")
-  initializedAt     DateTime? @map("initialized_at")
-
-  // 注册设置
-  allowRegistration Boolean  @default(true) @map("allow_registration")
-  defaultUserRole   String   @default("user") @map("default_user_role") // 新用户默认角色
-
-  // 系统外观
-  systemName        String   @default("Rss-Easy") @map("system_name")
-  systemLogo        String?  @map("system_logo")
-  systemDescription String?  @map("system_description") @db.Text
-
-  // 维护模式
-  maintenanceMode   Boolean  @default(false) @map("maintenance_mode")
-  maintenanceMessage String? @map("maintenance_message") @db.Text
-
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                 String    @id @default("system")
+  isInitialized      Boolean   @default(false) @map("is_initialized")
+  initializedAt      DateTime? @map("initialized_at")
+  allowRegistration  Boolean   @default(true) @map("allow_registration")
+  defaultUserRole    String    @default("user") @map("default_user_role")
+  systemName         String    @default("Rss-Easy") @map("system_name")
+  systemLogo         String?   @map("system_logo")
+  systemDescription  String?   @map("system_description")
+  maintenanceMode    Boolean   @default(false) @map("maintenance_mode")
+  maintenanceMessage String?   @map("maintenance_message")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@map("system_settings")
 }

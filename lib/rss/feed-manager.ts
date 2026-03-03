@@ -52,106 +52,97 @@ export class FeedManager {
 
       let entriesAdded = 0;
       let entriesUpdated = 0;
+      let entryErrors = 0;
 
-      // 处理每个条目
+      // 处理每个条目（带容错机制）
       for (const item of parsedFeed.items) {
-        const contentHash = await generateContentHash(
-          `${item.title}${item.link}${item.content || ''}`
-        );
+        try {
+          const contentHash = await generateContentHash(
+            `${item.title}${item.link}${item.content || ''}`
+          );
 
-        // 检查是否已存在
-        const existingEntry = await db.entry.findUnique({
-          where: { contentHash },
-        });
-
-        // 准备通用数据
-        const entryData = {
-          title: item.title,
-          content: item.content,
-          summary: item.contentSnippet?.slice(0, 500), // 限制摘要长度
-          url: item.link,
-          publishedAt: item.pubDate,
-          author: item.author,
-          tags: item.categories || [],
-          // 存储图片URL（如果有）
-          ...(item.image && { mainImageUrl: item.image }),
-        };
-
-        if (existingEntry) {
-          // 更新现有条目
-          await db.entry.update({
-            where: { id: existingEntry.id },
-            data: entryData,
+          // 检查是否已存在
+          const existingEntry = await db.entry.findUnique({
+            where: { contentHash },
           });
-          entriesUpdated++;
-        } else {
-          // 创建新条目
-          const newEntry = await db.entry.create({
-            data: {
-              feedId: feed.id,
-              contentHash,
-              ...entryData,
-            },
-          });
-          entriesAdded++;
 
-          // 自动添加到AI分析队列（需要用户启用且配置有效）
-          try {
-            // 获取用户的AI配置
-            const user = await db.user.findUnique({
-              where: { id: feed.userId },
-              select: { aiConfig: true },
+          // 准备通用数据
+          const entryData = {
+            title: item.title,
+            content: item.content,
+            summary: item.contentSnippet?.slice(0, 500), // 限制摘要长度
+            url: item.link,
+            publishedAt: item.pubDate,
+            author: item.author,
+            tags: item.categories || [],
+            // 存储图片URL（如果有）
+            ...(item.image && { mainImageUrl: item.image }),
+          };
+
+          if (existingEntry) {
+            // 更新现有条目
+            await db.entry.update({
+              where: { id: existingEntry.id },
+              data: entryData,
             });
-
-            const aiConfig = (user?.aiConfig as any) || {};
-            const configValid = aiConfig.configValid === true;
-            const autoSummary = aiConfig.autoSummary === true;
-            const autoCategorize = aiConfig.autoCategorize === true;
-            const aiQueueEnabled = aiConfig.aiQueueEnabled === true;
-
-            // 记录AI配置状态
-            await info('rss', '检查AI配置', {
-              entryId: newEntry.id,
-              feedId: feed.id,
-              userId: feed.userId,
-              configValid,
-              autoSummary,
-              autoCategorize,
-              aiQueueEnabled,
+            entriesUpdated++;
+          } else {
+            // 创建新条目
+            const newEntry = await db.entry.create({
+              data: {
+                feedId: feed.id,
+                contentHash,
+                ...entryData,
+              },
             });
+            entriesAdded++;
 
-            // 只有当配置验证通过且用户启用功能时才添加到队列
-            if (configValid && (autoSummary || autoCategorize || aiQueueEnabled)) {
-              await AIAnalysisQueue.addTask(newEntry.id, 'all', 5);
-              await info('rss', '文章已添加到AI分析队列', {
+            // 自动添加到AI分析队列（需要用户启用且配置有效）
+            try {
+              // 获取用户的AI配置
+              const user = await db.user.findUnique({
+                where: { id: feed.userId },
+                select: { aiConfig: true },
+              });
+
+              const aiConfig = (user?.aiConfig as any) || {};
+              const configValid = aiConfig.configValid === true;
+              const autoSummary = aiConfig.autoSummary === true;
+              const autoCategorize = aiConfig.autoCategorize === true;
+              const aiQueueEnabled = aiConfig.aiQueueEnabled === true;
+
+              // 只有当配置验证通过且用户启用功能时才添加到队列
+              if (configValid && (autoSummary || autoCategorize || aiQueueEnabled)) {
+                await AIAnalysisQueue.addTask(newEntry.id, 'all', 5);
+              }
+            } catch (err) {
+              // AI分析失败不影响feed抓取
+              await error('rss', '添加AI分析任务失败', err instanceof Error ? err : undefined, {
                 entryId: newEntry.id,
                 feedId: feed.id,
-              });
-            } else {
-              await info('rss', '文章未添加到AI分析队列', {
-                entryId: newEntry.id,
-                reason: !configValid ? '配置未验证' : 'AI功能未启用',
-                configValid,
-                hasEnabledFeatures: autoSummary || autoCategorize || aiQueueEnabled,
+                error: err instanceof Error ? err.message : String(err),
               });
             }
-          } catch (err) {
-            // AI分析失败不影响feed抓取
-            await error('rss', '添加AI分析任务失败', err instanceof Error ? err : undefined, {
-              entryId: newEntry.id,
-              feedId: feed.id,
-              error: err instanceof Error ? err.message : String(err),
-            });
           }
+        } catch (entryErr) {
+          // 单个条目失败不影响其他条目
+          entryErrors++;
+          await warn('rss', '处理条目失败，跳过继续', {
+            feedId,
+            itemTitle: item.title?.slice(0, 100),
+            error: entryErr instanceof Error ? entryErr.message : String(entryErr),
+          });
         }
       }
 
       const duration = Date.now() - startTime;
-      await info('rss', '订阅源抓取完成', { 
-        feedId, 
+      await info('rss', '订阅源抓取完成', {
+        feedId,
         title: feed.title,
-        entriesAdded, 
+        entriesAdded,
         entriesUpdated,
+        entryErrors,
+        totalItems: parsedFeed.items.length,
         duration,
       });
 
