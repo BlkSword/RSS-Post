@@ -40,7 +40,6 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
     echo "ignore-scripts=false" >> ~/.npmrc && \
     pnpm config set network-concurrency ${PNPM_CONCURRENCY} && \
     pnpm config set child-concurrency ${PNPM_CONCURRENCY} && \
-    NODE_OPTIONS="--max-old-space-size=$((BUILD_MEMORY / 2)) --optimize-for-size" \
     pnpm install --prod --frozen-lockfile=false --no-optional && \
     pnpm add prisma@6.19.2 && \
     pnpm exec prisma generate
@@ -49,14 +48,15 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
 FROM base AS builder
 WORKDIR /app
 
-# 🆕 接收构建参数
+# 🆕 接收构建参数并转换为环境变量
 ARG BUILD_MEMORY=1536
 ARG RUNTIME_MEMORY=512
 ARG PNPM_CONCURRENCY=2
 
-# 🆕 根据可用内存动态设置 Node.js 内存限制
-# 预留 20% 给系统和其他进程
-ENV NODE_OPTIONS="--max-old-space-size=${BUILD_MEMORY} --optimize-for-size --gc-interval=100"
+# 设置环境变量（注意：--optimize-for-size 不能放在 NODE_OPTIONS 中）
+ENV BUILD_MEMORY=${BUILD_MEMORY}
+ENV RUNTIME_MEMORY=${RUNTIME_MEMORY}
+ENV NODE_OPTIONS="--max-old-space-size=${BUILD_MEMORY} --gc-interval=100"
 ENV NEXT_TELEMETRY_DISABLED=1
 # 限制并行编译
 ENV NEXT_PRIVATE_STANDALONE_WORKER_THREADS=1
@@ -71,7 +71,6 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
     echo "ignore-scripts=false" >> ~/.npmrc && \
     pnpm config set network-concurrency ${PNPM_CONCURRENCY} && \
     pnpm config set child-concurrency ${PNPM_CONCURRENCY} && \
-    NODE_OPTIONS="--max-old-space-size=$((BUILD_MEMORY / 2)) --optimize-for-size" \
     pnpm install --frozen-lockfile=false --no-optional
 
 # 生成 Prisma Client
@@ -83,7 +82,7 @@ RUN rm -rf node_modules/.cache .next/cache 2>/dev/null || true
 # 构建（带 fallback 策略）
 RUN pnpm run build --no-lint 2>&1 || \
     (echo "Build failed, retrying with reduced memory..." && \
-     NODE_OPTIONS="--max-old-space-size=$((BUILD_MEMORY * 70 / 100)) --optimize-for-size --gc-interval=50 --max-semi-space-size=32" \
+     NODE_OPTIONS="--max-old-space-size=$((BUILD_MEMORY * 70 / 100)) --gc-interval=50 --max-semi-space-size=32" \
      pnpm run build --no-lint)
 
 # 清理不必要的文件
@@ -97,7 +96,7 @@ WORKDIR /app
 ARG RUNTIME_MEMORY=512
 
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=${RUNTIME_MEMORY} --optimize-for-size"
+ENV NODE_OPTIONS="--max-old-space-size=${RUNTIME_MEMORY}"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # 创建非 root 用户
