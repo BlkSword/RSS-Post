@@ -1,5 +1,5 @@
 # =====================================================
-# Rss-Easy Docker Compose 配置
+# RSS-Post Docker Compose 配置
 # 零配置启动：直接 docker-compose up -d 即可
 # 启用 BuildKit 加速：DOCKER_BUILDKIT=1 docker-compose build
 # =====================================================
@@ -8,17 +8,17 @@ services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:16-alpine
-    container_name: rss-easy-db
+    container_name: rss-post-db
     environment:
-      POSTGRES_USER: rss_easy
-      POSTGRES_PASSWORD: rss_easy_password
-      POSTGRES_DB: rss_easy
+      POSTGRES_USER: rss_post
+      POSTGRES_PASSWORD: rss_post_password
+      POSTGRES_DB: rss_post
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rss_easy"]
+      test: ["CMD-SHELL", "pg_isready -U rss_post"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
   # Redis 缓存和队列
   redis:
     image: redis:7-alpine
-    container_name: rss-easy-redis
+    container_name: rss-post-redis
     ports:
       - "6379:6379"
     volumes:
@@ -47,13 +47,13 @@ services:
         - type=local,src=/tmp/docker-cache
       cache_to:
         type=local,dest=/tmp/docker-cache
-    image: rss-easy-app:latest
-    container_name: rss-easy-app
+    image: rss-post-app:latest
+    container_name: rss-post-app
     ports:
       - "8915:3000"
     environment:
       # 数据库（容器内部通信）
-      DATABASE_URL: postgresql://rss_easy:rss_easy_password@postgres:5432/rss_easy
+      DATABASE_URL: postgresql://rss_post:rss_post_password@postgres:5432/rss_post
       REDIS_URL: redis://redis:6379
       # 应用 URL（可按需修改）
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:8915}
@@ -80,11 +80,11 @@ services:
 
   # 数据库初始化服务（使用预构建镜像，不再重新构建）
   init:
-    image: rss-easy-app:latest
-    container_name: rss-easy-init
+    image: rss-post-app:latest
+    container_name: rss-post-init
     user: root
     environment:
-      DATABASE_URL: postgresql://rss_easy:rss_easy_password@postgres:5432/rss_easy
+      DATABASE_URL: postgresql://rss_post:rss_post_password@postgres:5432/rss_post
     depends_on:
       postgres:
         condition: service_healthy

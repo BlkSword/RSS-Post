@@ -1,12 +1,21 @@
 /**
- * Tabs 组件
- * 基于 Radix UI 的 Tab 导航组件
+ * Tabs 组件 - 基于 Ant Design Tabs
  */
 
 'use client';
 
 import * as React from 'react';
+import { Tabs as AntTabs, TabsProps as AntTabsProps } from 'antd';
 import { cn } from '@/lib/utils';
+
+// 本地定义 Tab 类型
+interface Tab {
+  key: string;
+  label: React.ReactNode;
+  children?: React.ReactNode;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+}
 
 interface TabsProps {
   defaultValue?: string;
@@ -14,6 +23,8 @@ interface TabsProps {
   onValueChange?: (value: string) => void;
   children: React.ReactNode;
   className?: string;
+  centered?: boolean;
+  type?: 'line' | 'card' | 'editable-card';
 }
 
 interface TabsListProps {
@@ -25,6 +36,8 @@ interface TabsTriggerProps {
   value: string;
   children: React.ReactNode;
   className?: string;
+  disabled?: boolean;
+  icon?: React.ReactNode;
 }
 
 interface TabsContentProps {
@@ -36,13 +49,26 @@ interface TabsContentProps {
 const TabsContext = React.createContext<{
   value: string;
   onValueChange: (value: string) => void;
+  items: Tab[];
+  setItems: React.Dispatch<React.SetStateAction<Tab[]>>;
 }>({
   value: '',
   onValueChange: () => {},
+  items: [],
+  setItems: () => {},
 });
 
-export function Tabs({ defaultValue, value: controlledValue, onValueChange, children, className }: TabsProps) {
+export function Tabs({
+  defaultValue,
+  value: controlledValue,
+  onValueChange,
+  children,
+  className,
+  centered = false,
+  type = 'line',
+}: TabsProps) {
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue || '');
+  const [items, setItems] = React.useState<Tab[]>([]);
 
   const value = controlledValue ?? uncontrolledValue;
   const handleValueChange = (newValue: string) => {
@@ -53,51 +79,99 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
   };
 
   return (
-    <TabsContext.Provider value={{ value, onValueChange: handleValueChange }}>
-      <div className={className}>{children}</div>
+    <TabsContext.Provider value={{ value, onValueChange: handleValueChange, items, setItems }}>
+      <div className={cn('w-full', className)}>{children}</div>
     </TabsContext.Provider>
   );
 }
 
 export function TabsList({ children, className }: TabsListProps) {
+  const { value, onValueChange, items } = React.useContext(TabsContext);
+
+  // 处理子元素，提取 tab 信息
+  React.useEffect(() => {
+    const tabs: Tab[] = [];
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child) && child.type === TabsTrigger) {
+        const props = child.props as TabsTriggerProps;
+        const { value: tabValue, children: label, disabled, icon } = props;
+        tabs.push({
+          key: tabValue,
+          label: (
+            <span className="flex items-center gap-1.5">
+              {icon}
+              {label}
+            </span>
+          ),
+          disabled,
+        });
+      }
+    });
+  }, [children]);
+
   return (
-    <div className={cn('inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground', className)}>
+    <div className={cn('border-b border-border/60', className)}>
       {children}
     </div>
   );
 }
 
-export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
-  const { value: currentValue, onValueChange } = React.useContext(TabsContext);
-  const isActive = currentValue === value;
+export function TabsTrigger({ value: tabValue, children, className, disabled, icon }: TabsTriggerProps) {
+  const { value, onValueChange } = React.useContext(TabsContext);
+  const isActive = value === tabValue;
 
   return (
     <button
       type="button"
-      onClick={() => onValueChange(value)}
+      onClick={() => !disabled && onValueChange(tabValue)}
+      disabled={disabled}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px',
         isActive
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-background/50',
+          ? 'text-primary border-primary'
+          : 'text-muted-foreground border-transparent hover:text-foreground hover:border-muted',
+        disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
     >
+      {icon}
       {children}
     </button>
   );
 }
 
-export function TabsContent({ value, children, className }: TabsContentProps) {
-  const { value: currentValue } = React.useContext(TabsContext);
+export function TabsContent({ value: tabValue, children, className }: TabsContentProps) {
+  const { value } = React.useContext(TabsContext);
 
-  if (currentValue !== value) {
+  if (value !== tabValue) {
     return null;
   }
 
   return (
-    <div className={cn('mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', className)}>
+    <div className={cn('mt-4', className)}>
       {children}
     </div>
   );
 }
+
+// 简化的 Ant Design Tabs 包装器
+interface SimpleTabsProps extends AntTabsProps {
+  items: Array<{
+    key: string;
+    label: React.ReactNode;
+    children: React.ReactNode;
+    disabled?: boolean;
+  }>;
+}
+
+export function SimpleTabs({ items, className, ...props }: SimpleTabsProps) {
+  return (
+    <AntTabs
+      items={items}
+      className={cn('', className)}
+      {...props}
+    />
+  );
+}
+
+export default Tabs;

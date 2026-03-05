@@ -132,19 +132,20 @@ export function EmailSettings({ user }: EmailSettingsProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* SMTP配置 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Server className="h-5 w-5 text-primary" />
-            SMTP 服务器配置
-          </div>
-        }
-      >
-        <div className="space-y-6">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-primary" />
+              SMTP 服务器配置
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-6">
           {/* 启用开关 */}
           <div
             className={cn(
@@ -193,7 +194,7 @@ export function EmailSettings({ user }: EmailSettingsProps) {
           {enabled && (
             <>
               {/* 预设选择 */}
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 <label className="text-sm font-medium">快速配置（选择邮件服务商）</label>
                 <div className="flex flex-wrap gap-2">
                   {presets.map((preset) => (
@@ -378,7 +379,7 @@ export function EmailSettings({ user }: EmailSettingsProps) {
                       type="text"
                       value={fromName}
                       onChange={(e) => setFromName(e.target.value)}
-                      placeholder="Rss-Easy"
+                      placeholder="RSS-Post"
                       className={cn(
                         'w-full px-4 py-3 rounded-xl border-2 border-border bg-background',
                         'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50',
@@ -393,10 +394,12 @@ export function EmailSettings({ user }: EmailSettingsProps) {
           )}
         </div>
       </Card>
+      </div>
 
       {/* 安全提示 */}
       {enabled && (
-        <Card className="border-primary/20 bg-primary/5 overflow-hidden" variant="borderless">
+        <div className="mb-6">
+          <Card className="border-primary/20 bg-primary/5 overflow-hidden" variant="borderless">
           <div className="px-6 py-6">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -421,7 +424,8 @@ export function EmailSettings({ user }: EmailSettingsProps) {
               </div>
             </div>
           </div>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* 操作按钮 */}

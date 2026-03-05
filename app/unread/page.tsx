@@ -44,7 +44,7 @@ export default function UnreadPage() {
   });
 
   const displayEntries = entriesData?.items || [];
-  const selectedIndex = displayEntries.findIndex((e) => e.id === selectedEntryId);
+  const selectedIndex = displayEntries.findIndex((e: { id: string }) => e.id === selectedEntryId);
 
   const handleSelectEntry = useCallback((entryId: string) => {
     setSelectedEntryId(entryId);
@@ -98,7 +98,7 @@ export default function UnreadPage() {
               <CompactEntryEmpty message="太棒了！你已经读完所有文章" />
             ) : (
               <CompactEntryList>
-                {displayEntries.map((entry) => (
+                {displayEntries.map((entry: any) => (
                   <CompactEntryItem
                     key={entry.id}
                     id={entry.id}

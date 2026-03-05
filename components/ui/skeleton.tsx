@@ -1,12 +1,15 @@
 /**
- * 骨架屏组件
- * 提供流畅的加载体验
+ * 骨架屏组件 - 基于 Ant Design Skeleton
  */
 
+import * as React from 'react';
+import { Skeleton as AntSkeleton, Space } from 'antd';
+import type { SkeletonProps as AntSkeletonProps } from 'antd';
 import { cn } from '@/lib/utils';
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SkeletonProps extends Omit<AntSkeletonProps, 'classNames' | 'styles'> {
   variant?: 'default' | 'card' | 'text' | 'avatar' | 'image';
+  className?: string;
 }
 
 export function Skeleton({
@@ -14,21 +17,38 @@ export function Skeleton({
   variant = 'default',
   ...props
 }: SkeletonProps) {
-  const variants = {
-    default: 'rounded-md',
-    card: 'rounded-xl',
-    text: 'rounded',
-    avatar: 'rounded-full',
-    image: 'rounded-lg',
-  };
+  if (variant === 'avatar') {
+    return (
+      <AntSkeleton.Avatar
+        className={cn('', className)}
+        {...props}
+      />
+    );
+  }
+
+  if (variant === 'image') {
+    return (
+      <AntSkeleton.Image
+        className={cn('', className)}
+        {...props}
+      />
+    );
+  }
+
+  if (variant === 'text') {
+    return (
+      <AntSkeleton.Input
+        className={cn('', className)}
+        active
+        {...props}
+      />
+    );
+  }
 
   return (
-    <div
-      className={cn(
-        'animate-pulse bg-muted/60',
-        variants[variant],
-        className
-      )}
+    <AntSkeleton
+      className={cn('', className)}
+      active
       {...props}
     />
   );
@@ -39,20 +59,20 @@ export function Skeleton({
  */
 export function EntryListSkeleton({ count = 5 }: { count?: number }) {
   return (
-    <div className="space-y-3">
+    <Space direction="vertical" className="w-full" size="middle">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
           className="flex items-start gap-3 p-4 rounded-xl border border-border/40 bg-card/50"
         >
-          <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+          <AntSkeleton.Avatar size="large" shape="square" active />
           <div className="flex-1 space-y-2 min-w-0">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
+            <AntSkeleton.Input style={{ width: '75%' }} active size="small" />
+            <AntSkeleton.Input style={{ width: '50%' }} active size="small" />
           </div>
         </div>
       ))}
-    </div>
+    </Space>
   );
 }
 
@@ -65,15 +85,17 @@ export function CardGridSkeleton({ count = 6 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="p-5 rounded-xl border border-border/40 bg-card/50 space-y-4"
+          className="p-5 rounded-xl border border-border/40 bg-card/50"
         >
-          <div className="flex items-center gap-3">
-            <Skeleton className="w-8 h-8 rounded-lg" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <Skeleton className="h-5 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-20 w-full rounded-lg" />
+          <Space direction="vertical" className="w-full" size="middle">
+            <div className="flex items-center gap-3">
+              <AntSkeleton.Avatar size="small" active />
+              <AntSkeleton.Input style={{ width: 80 }} active size="small" />
+            </div>
+            <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+            <AntSkeleton.Input style={{ width: '75%' }} active size="small" />
+            <AntSkeleton.Image className="w-full h-20" active />
+          </Space>
         </div>
       ))}
     </div>
@@ -86,22 +108,22 @@ export function CardGridSkeleton({ count = 6 }: { count?: number }) {
 export function ArticleSkeleton() {
   return (
     <div className="space-y-6 p-6">
-      <Skeleton className="h-8 w-3/4" />
+      <AntSkeleton.Input style={{ width: '75%' }} active size="large" />
       <div className="flex items-center gap-3">
-        <Skeleton className="w-6 h-6 rounded-full" />
-        <Skeleton className="h-4 w-32" />
+        <AntSkeleton.Avatar size="small" active />
+        <AntSkeleton.Input style={{ width: 120 }} active size="small" />
       </div>
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-      <Skeleton className="h-40 w-full rounded-xl" />
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-4/5" />
-      </div>
+      <Space direction="vertical" className="w-full" size="small">
+        <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+        <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+        <AntSkeleton.Input style={{ width: '66%' }} active size="small" />
+      </Space>
+      <AntSkeleton.Image className="w-full h-40 rounded-xl" active />
+      <Space direction="vertical" className="w-full" size="small">
+        <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+        <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+        <AntSkeleton.Input style={{ width: '80%' }} active size="small" />
+      </Space>
     </div>
   );
 }
@@ -112,16 +134,18 @@ export function ArticleSkeleton() {
 export function SidebarSkeleton() {
   return (
     <div className="space-y-4 p-4">
-      <Skeleton className="h-8 w-full rounded-lg" />
-      <div className="space-y-2">
+      <AntSkeleton.Input style={{ width: '100%' }} active size="small" />
+      <Space direction="vertical" className="w-full" size="small">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full rounded-lg" />
+          <AntSkeleton.Input key={i} style={{ width: '100%' }} active size="small" />
         ))}
-      </div>
-      <div className="pt-4 space-y-2">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full rounded-lg" />
-        ))}
+      </Space>
+      <div className="pt-4">
+        <Space direction="vertical" className="w-full" size="small">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <AntSkeleton.Input key={i} style={{ width: '100%' }} active size="small" />
+          ))}
+        </Space>
       </div>
     </div>
   );

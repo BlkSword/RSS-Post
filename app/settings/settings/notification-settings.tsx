@@ -56,18 +56,20 @@ export function NotificationSettings({ user }: NotificationSettingsProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 邮件通知 */}
-      <Card 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            邮件通知
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className=""
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              邮件通知
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 启用邮件通知 */}
           <div
             className={cn(
@@ -164,20 +166,23 @@ export function NotificationSettings({ user }: NotificationSettingsProps) {
               disabled={!emailNotifications}
             />
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 应用通知 */}
-      <Card 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            应用通知
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className=""
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              应用通知
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 错误通知 */}
           <div
             className={cn(
@@ -214,8 +219,9 @@ export function NotificationSettings({ user }: NotificationSettingsProps) {
               onChange={(checked) => setNotifyErrors(checked)}
             />
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 保存按钮 */}
       <div className="flex justify-end">

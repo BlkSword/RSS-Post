@@ -483,11 +483,16 @@ model SystemSettings {
   initializedAt      DateTime? @map("initialized_at")
   allowRegistration  Boolean   @default(true) @map("allow_registration")
   defaultUserRole    String    @default("user") @map("default_user_role")
-  systemName         String    @default("Rss-Easy") @map("system_name")
+  systemName         String    @default("RSS-Post") @map("system_name")
   systemLogo         String?   @map("system_logo")
   systemDescription  String?   @map("system_description")
   maintenanceMode    Boolean   @default(false) @map("maintenance_mode")
   maintenanceMessage String?   @map("maintenance_message")
+  // 代理配置
+  proxyEnabled       Boolean   @default(false) @map("proxy_enabled")
+  proxyHost          String?   @map("proxy_host")
+  proxyPort          Int?      @map("proxy_port")
+  proxyType          String    @default("http") @map("proxy_type") // http, socks5, socks4
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@map("system_settings")

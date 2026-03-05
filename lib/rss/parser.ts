@@ -9,6 +9,7 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { retry, sleep } from '../utils';
+import { getProxyConfig } from '../system/init-check';
 
 /**
  * 浏览器请求头配置 - 模拟真实浏览器访问
@@ -34,14 +35,13 @@ const BROWSER_HEADERS = {
 
 /**
  * 获取代理 Agent
- * 支持环境变量 HTTP_PROXY, HTTPS_PROXY, NO_PROXY
- * 以及自动检测本地代理（Clash、V2Ray 等）
+ * 优先级：数据库配置 > 环境变量
  */
-function getProxyAgent(url: string): { httpsAgent?: HttpsProxyAgent | SocksProxyAgent } | {} {
+async function getProxyAgent(url: string): Promise<{ httpsAgent?: HttpsProxyAgent<string> | SocksProxyAgent } | {}> {
   const urlObj = new URL(url);
   const hostname = urlObj.hostname;
 
-  // 检查 NO_PROXY
+  // 检查 NO_PROXY 环境变量
   const noProxy = process.env.NO_PROXY || process.env.no_proxy;
   if (noProxy) {
     const noProxyList = noProxy.split(',').map(s => s.trim());
@@ -50,7 +50,21 @@ function getProxyAgent(url: string): { httpsAgent?: HttpsProxyAgent | SocksProxy
     }
   }
 
-  // 1. 检查环境变量中的代理 URL
+  // 1. 优先从数据库读取代理配置
+  try {
+    const proxyConfig = await getProxyConfig();
+    if (proxyConfig.enabled && proxyConfig.host && proxyConfig.port) {
+      const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
+      if (proxyConfig.type === 'socks5' || proxyConfig.type === 'socks4') {
+        return { httpsAgent: new SocksProxyAgent(proxyUrl) };
+      }
+      return { httpsAgent: new HttpsProxyAgent(proxyUrl) };
+    }
+  } catch (err) {
+    console.error('读取代理配置失败:', err);
+  }
+
+  // 2. 检查环境变量中的代理 URL（兼容旧配置）
   const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy ||
                    process.env.HTTP_PROXY || process.env.http_proxy;
 
@@ -64,18 +78,6 @@ function getProxyAgent(url: string): { httpsAgent?: HttpsProxyAgent | SocksProxy
       return { httpsAgent: new HttpsProxyAgent(proxyUrl) };
     } catch {
       // 忽略解析错误
-    }
-  }
-
-  // 2. 自动检测本地代理（开发环境或显式启用）
-  if (process.env.RSS_AUTO_PROXY === 'true' || process.env.NODE_ENV === 'development') {
-    const proxyPort = process.env.RSS_PROXY_PORT ? parseInt(process.env.RSS_PROXY_PORT) : 7890;
-    const proxyHost = process.env.RSS_PROXY_HOST || '127.0.0.1';
-
-    try {
-      return { httpsAgent: new HttpsProxyAgent(`http://${proxyHost}:${proxyPort}`) };
-    } catch {
-      // 忽略错误
     }
   }
 
@@ -289,8 +291,8 @@ export class RSSParser {
     const timeoutId = setTimeout(() => controller.abort(), this.FEED_FETCH_TIMEOUT);
 
     try {
-      // 获取代理配置
-      const proxyAgent = getProxyAgent(url);
+      // 获取代理配置（从数据库读取）
+      const proxyAgent = await getProxyAgent(url);
 
       const response = await axios.get(url, {
         timeout: this.FEED_FETCH_TIMEOUT,
@@ -533,7 +535,7 @@ export class RSSParser {
 
     try {
       // 获取代理配置
-      const proxyAgent = getProxyAgent(url);
+      const proxyAgent = await getProxyAgent(url);
 
       const response = await axios.get(url, {
         timeout: this.FETCH_CONTENT_TIMEOUT,
@@ -590,7 +592,7 @@ export class RSSParser {
   private async fetchContent(url: string): Promise<string | null> {
     try {
       // 获取代理配置
-      const proxyAgent = getProxyAgent(url);
+      const proxyAgent = await getProxyAgent(url);
 
       const response = await axios.get(url, {
         timeout: this.FETCH_CONTENT_TIMEOUT,
@@ -1404,7 +1406,7 @@ export class RSSParser {
 
     try {
       // 获取代理配置
-      const proxyAgent = getProxyAgent(url);
+      const proxyAgent = await getProxyAgent(url);
 
       const response = await axios.get(url, {
         timeout: 15000,

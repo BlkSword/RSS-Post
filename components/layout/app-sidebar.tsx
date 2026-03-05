@@ -245,7 +245,7 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
             </div>
           ) : (
             <nav className="space-y-0.5">
-              {categories?.map((category) => {
+              {categories?.map((category: any) => {
                 const isOpen = openCategories.has(category.id);
                 const hasFeeds = category._count.feeds > 0;
 
@@ -309,7 +309,7 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
                     {/* 分组的订阅源 */}
                     {isOpen && hasFeeds && category.feeds && (
                       <div className="ml-8 mt-0.5 space-y-0.5">
-                        {category.feeds.map((feed) => (
+                        {category.feeds.map((feed: any) => (
                           <Link
                             key={feed.id}
                             href={`/?feed=${feed.id}`}
@@ -362,7 +362,7 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
             </div>
           ) : (
             <nav className="space-y-0.5">
-              {feeds?.items.slice(0, 10).map((feed) => (
+              {feeds?.items.slice(0, 10).map((feed: any) => (
                 <Link
                   key={feed.id}
                   href={`/?feed=${feed.id}`}

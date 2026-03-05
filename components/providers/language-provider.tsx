@@ -16,13 +16,13 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'rss-easy-language';
+const STORAGE_KEY = 'rss-post-language';
 
 // 翻译字典
 const translations: Record<Language, Record<string, string>> = {
   'zh-CN': {
     // 通用
-    'app.name': 'Rss-Easy',
+    'app.name': 'RSS-Post',
     'app.description': '智能RSS资讯聚合平台',
     'app.loading': '加载中...',
     'app.empty': '暂无数据',
@@ -286,7 +286,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
   'en': {
     // General
-    'app.name': 'Rss-Easy',
+    'app.name': 'RSS-Post',
     'app.description': 'Smart RSS Aggregator',
     'app.loading': 'Loading...',
     'app.empty': 'No data',

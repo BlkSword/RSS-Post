@@ -1,12 +1,12 @@
 /**
- * 空状态组件 - 增强版
+ * 空状态组件 - 基于 Ant Design Empty
  */
 
 'use client';
 
 import { ReactNode } from 'react';
+import { Empty, Button } from 'antd';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -15,6 +15,7 @@ interface EmptyStateProps {
   action?: {
     label: string;
     onClick: () => void;
+    icon?: ReactNode;
   };
   secondaryAction?: {
     label: string;
@@ -40,35 +41,39 @@ export function EmptyState({
   };
 
   return (
-    <div className={cn(
-      'flex flex-col items-center justify-center text-center',
-      variants[variant],
-      className
-    )}>
-      {icon && (
-        <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6 animate-float">
-          <div className="text-muted-foreground/60">
-            {icon}
-          </div>
-        </div>
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center text-center',
+        variants[variant],
+        className
       )}
-      
-      <h3 className="text-lg font-semibold text-foreground mb-2">
-        {title}
-      </h3>
-      
-      <p className="text-sm text-muted-foreground max-w-sm mb-6">
-        {description}
-      </p>
-      
-      <div className="flex items-center gap-3">
+    >
+      <Empty
+        image={icon ? <div className="text-muted-foreground/60 mb-4">{icon}</div> : Empty.PRESENTED_IMAGE_SIMPLE}
+        description={
+          <div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {title}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mb-6">
+              {description}
+            </p>
+          </div>
+        }
+      />
+
+      <div className="flex items-center gap-3 mt-4">
         {action && (
-          <Button onClick={action.onClick} variant="primary">
+          <Button
+            type="primary"
+            onClick={action.onClick}
+            icon={action.icon}
+          >
             {action.label}
           </Button>
         )}
         {secondaryAction && (
-          <Button onClick={secondaryAction.onClick} variant="ghost">
+          <Button onClick={secondaryAction.onClick}>
             {secondaryAction.label}
           </Button>
         )}
@@ -76,3 +81,5 @@ export function EmptyState({
     </div>
   );
 }
+
+export default EmptyState;

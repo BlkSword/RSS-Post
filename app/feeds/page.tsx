@@ -44,14 +44,14 @@ export default function FeedsPage() {
 
   const feeds = feedsData?.items || [];
 
-  const groupedFeeds = feeds.reduce((acc, feed) => {
-    const category = feed.category?.name || '未分类';
+  const groupedFeeds = feeds.reduce<Record<string, typeof feeds>>((acc: Record<string, typeof feeds>, feed: any) => {
+    const category = (feed as any).category?.name || '未分类';
     if (!acc[category]) {
       acc[category] = [];
     }
-    acc[category].push(feed);
+    acc[category].push(feed as any);
     return acc;
-  }, {} as Record<string, typeof feeds>);
+  }, {});
 
   const handleFeedClick = (feedId: string) => {
     router.push(`/feeds/${feedId}`);
@@ -163,12 +163,12 @@ export default function FeedsPage() {
                         title={
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{categoryName}</span>
-                            <Tag color="blue">{categoryFeeds.length}</Tag>
+                            <Tag color="blue">{(categoryFeeds as any[]).length}</Tag>
                           </div>
                         }
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categoryFeeds.map((feed, index) => (
+                          {(categoryFeeds as any[]).map((feed, index) => (
                             <FeedCard
                               key={feed.id}
                               feed={feed}

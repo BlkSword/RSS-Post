@@ -158,12 +158,12 @@ export default function RegisterPage() {
           {/* Logo 和标题 */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20 mb-6 hover-lift overflow-hidden">
-              <img src="/logo.png" alt="Rss-Easy" className="w-14 h-14 object-contain" />
+              <img src="/logo.png" alt="RSS-Post" className="w-14 h-14 object-contain" />
             </div>
             <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               创建账号
             </h1>
-            <p className="text-muted-foreground">加入 Rss-Easy，开启智能阅读之旅</p>
+            <p className="text-muted-foreground">加入 RSS-Post，开启智能阅读之旅</p>
           </div>
 
           {/* 注册表单 */}

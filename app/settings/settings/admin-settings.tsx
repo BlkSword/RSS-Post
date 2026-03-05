@@ -18,6 +18,7 @@ import {
   UserCog,
   Trash2,
   Check,
+  Globe,
 } from 'lucide-react';
 import { Select, Button, Card, Modal, Switch } from 'antd';
 import { cn } from '@/lib/utils';
@@ -58,7 +59,7 @@ export function AdminSettings() {
     : tabs.filter(t => !t.superAdminOnly);
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 标签页导航 */}
       <div className="flex gap-2 border-b border-border pb-2">
         {visibleTabs.map((tab) => {
@@ -96,11 +97,16 @@ function SystemSettingsPanel() {
   const [formData, setFormData] = useState({
     allowRegistration: true,
     defaultUserRole: 'user' as 'user' | 'editor' | 'admin',
-    systemName: 'Rss-Easy',
+    systemName: 'RSS-Post',
     systemLogo: '',
     systemDescription: '',
     maintenanceMode: false,
     maintenanceMessage: '',
+    // 代理配置
+    proxyEnabled: false,
+    proxyHost: '',
+    proxyPort: 7890,
+    proxyType: 'http' as 'http' | 'socks5' | 'socks4',
   });
 
   // 获取当前设置
@@ -127,6 +133,11 @@ function SystemSettingsPanel() {
         systemDescription: settings.systemDescription || '',
         maintenanceMode: settings.maintenanceMode,
         maintenanceMessage: settings.maintenanceMessage || '',
+        // 代理配置
+        proxyEnabled: settings.proxyEnabled ?? false,
+        proxyHost: settings.proxyHost || '',
+        proxyPort: settings.proxyPort ?? 7890,
+        proxyType: (settings.proxyType as 'http' | 'socks5' | 'socks4') ?? 'http',
       });
     }
   }, [settings]);
@@ -141,6 +152,11 @@ function SystemSettingsPanel() {
       systemDescription: formData.systemDescription || null,
       maintenanceMode: formData.maintenanceMode,
       maintenanceMessage: formData.maintenanceMessage || null,
+      // 代理配置
+      proxyEnabled: formData.proxyEnabled,
+      proxyHost: formData.proxyHost || null,
+      proxyPort: formData.proxyEnabled ? formData.proxyPort : null,
+      proxyType: formData.proxyType,
     });
   };
 
@@ -155,19 +171,20 @@ function SystemSettingsPanel() {
   const roleOptions = getRoleOptions().filter(r => r.value !== 'super_admin');
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
       {/* 注册设置 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            注册设置
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              注册设置
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 开放注册开关 */}
           <div
             className={cn(
@@ -204,7 +221,7 @@ function SystemSettingsPanel() {
           </div>
 
           {/* 默认角色选择 */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             <label className="text-sm font-medium">新用户默认角色</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {roleOptions.map((option) => {
@@ -244,21 +261,23 @@ function SystemSettingsPanel() {
               })}
             </div>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 系统外观 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-primary" />
-            系统外观
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              系统外观
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 系统名称 */}
           <div className="space-y-2">
             <label className="text-sm font-medium">系统名称</label>
@@ -308,21 +327,23 @@ function SystemSettingsPanel() {
               placeholder="简要描述您的系统..."
             />
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 维护模式 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            维护模式
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              维护模式
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 维护模式开关 */}
           <div
             className={cn(
@@ -375,8 +396,134 @@ function SystemSettingsPanel() {
               />
             </div>
           )}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
+
+      {/* 网络代理配置 */}
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              网络代理
+            </div>
+          }
+        >
+          <div className="space-y-4">
+          {/* 代理开关 */}
+          <div
+            className={cn(
+              'flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-250 cursor-pointer group',
+              'hover:border-primary/30 hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent',
+              formData.proxyEnabled
+                ? 'border-primary/50 bg-gradient-to-r from-primary/[0.08] to-primary/[0.03] shadow-sm'
+                : 'border-border/80 bg-muted/20'
+            )}
+            onClick={() => setFormData({ ...formData, proxyEnabled: !formData.proxyEnabled })}
+          >
+            <div className="flex items-center gap-3 flex-1">
+              <div className={cn(
+                'w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-250',
+                formData.proxyEnabled ? 'bg-primary/20 shadow-sm' : 'bg-muted/60 group-hover:bg-primary/10'
+              )}>
+                <Check className={cn(
+                  'h-5 w-5 transition-all duration-250',
+                  formData.proxyEnabled ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-primary/60'
+                )} />
+              </div>
+              <div>
+                <div className={cn(
+                  'font-medium transition-colors duration-200',
+                  formData.proxyEnabled ? 'text-primary' : 'group-hover:text-primary/90'
+                )}>启用代理</div>
+                <div className="text-sm text-muted-foreground">用于访问国外 RSS 源（如 Clash、V2Ray 等）</div>
+              </div>
+            </div>
+            <Switch
+              checked={formData.proxyEnabled}
+              onChange={(checked) => setFormData({ ...formData, proxyEnabled: checked })}
+            />
+          </div>
+
+          {/* 代理配置详情 */}
+          {formData.proxyEnabled && (
+            <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border">
+              {/* 代理类型 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">代理类型</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: 'http', label: 'HTTP' },
+                    { value: 'socks5', label: 'SOCKS5' },
+                    { value: 'socks4', label: 'SOCKS4' },
+                  ].map((type) => {
+                    const isActive = formData.proxyType === type.value;
+                    return (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, proxyType: type.value as any })}
+                        className={cn(
+                          'px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all',
+                          isActive
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/50'
+                        )}
+                      >
+                        {type.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 代理地址和端口 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">代理地址</label>
+                  <input
+                    type="text"
+                    value={formData.proxyHost}
+                    onChange={(e) => setFormData({ ...formData, proxyHost: e.target.value })}
+                    className={cn(
+                      'w-full px-4 py-3 rounded-xl border-2 border-border bg-background',
+                      'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50',
+                      'transition-all duration-200 input-warm',
+                      'placeholder:text-muted-foreground/50'
+                    )}
+                    placeholder="127.0.0.1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">端口</label>
+                  <input
+                    type="number"
+                    value={formData.proxyPort}
+                    onChange={(e) => setFormData({ ...formData, proxyPort: parseInt(e.target.value) || 7890 })}
+                    className={cn(
+                      'w-full px-4 py-3 rounded-xl border-2 border-border bg-background',
+                      'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50',
+                      'transition-all duration-200 input-warm',
+                      'placeholder:text-muted-foreground/50'
+                    )}
+                    placeholder="7890"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  💡 常见代理端口：Clash (7890)、V2Ray (10808)、Shadowsocks (1080)
+                </p>
+              </div>
+            </div>
+          )}
+          </div>
+        </Card>
+      </div>
 
       {/* 保存按钮 */}
       <div className="flex justify-end">

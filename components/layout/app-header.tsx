@@ -144,10 +144,10 @@ function AppHeaderComponent({
 
           <Link href="/" className="flex items-center gap-2 md:gap-2.5 group">
             <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-sm group-hover:shadow-md transition-shadow overflow-hidden">
-              <img src="/logo-small.png" alt="Rss-Easy" className="h-5 w-5 md:h-6 md:w-6 object-contain" />
+              <img src="/logo-small.png" alt="RSS-Post" className="h-5 w-5 md:h-6 md:w-6 object-contain" />
             </div>
             <span className="font-semibold text-sm md:text-base hidden sm:block">
-              Rss-Easy
+              RSS-Post
             </span>
           </Link>
         </div>
@@ -437,7 +437,7 @@ function SearchDropdown({
       ) : (
         <>
           <div className="max-h-80 overflow-y-auto py-2">
-            {entries.map((entry) => (
+            {entries.map((entry: any) => (
               <button
                 key={entry.id}
                 onClick={() => {

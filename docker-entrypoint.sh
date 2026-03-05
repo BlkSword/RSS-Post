@@ -1,6 +1,6 @@
 #!/bin/sh
 # =====================================================
-# Rss-Easy Docker Entrypoint
+# RSS-Post Docker Entrypoint
 # 自动生成密钥，零配置启动
 # =====================================================
 
@@ -29,7 +29,7 @@ fi
 : ${AI_PROVIDER:="openai"}
 : ${AI_MODEL:="gpt-4o"}
 
-echo "[INFO] Rss-Easy 启动中..."
+echo "[INFO] RSS-Post 启动中..."
 echo "[INFO] NODE_ENV=$NODE_ENV"
 echo "[INFO] AI_PROVIDER=$AI_PROVIDER"
 

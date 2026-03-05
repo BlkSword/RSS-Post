@@ -500,7 +500,7 @@ export function ReportScheduleSettings({ open, onClose }: ReportScheduleSettings
             </div>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {schedules.map((schedule) => (
+              {schedules.map((schedule: Schedule) => (
                 <ScheduleCard
                   key={schedule.id}
                   schedule={schedule as Schedule}

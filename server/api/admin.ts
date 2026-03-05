@@ -32,6 +32,11 @@ const systemSettingsSchema = z.object({
   systemDescription: z.string().max(500).nullable().optional(),
   maintenanceMode: z.boolean().optional(),
   maintenanceMessage: z.string().max(500).nullable().optional(),
+  // 代理配置
+  proxyEnabled: z.boolean().optional(),
+  proxyHost: z.string().max(255).nullable().optional(),
+  proxyPort: z.number().int().min(1).max(65535).nullable().optional(),
+  proxyType: z.enum(['http', 'socks5', 'socks4']).optional(),
 });
 
 // 更新用户角色 schema
@@ -55,9 +60,9 @@ export const adminRouter = router({
   }),
 
   /**
-   * 获取系统设置（需要登录）
+   * 获取系统设置（公开访问，用于维护模式检查）
    */
-  getSystemSettings: protectedProcedure.query(async () => {
+  getSystemSettings: publicProcedure.query(async () => {
     const settings = await getSystemSettings();
 
     if (!settings) {
@@ -65,11 +70,15 @@ export const adminRouter = router({
       return {
         allowRegistration: true,
         defaultUserRole: 'user',
-        systemName: 'Rss-Easy',
+        systemName: 'RSS-Post',
         systemLogo: null,
         systemDescription: null,
         maintenanceMode: false,
         maintenanceMessage: null,
+        proxyEnabled: false,
+        proxyHost: null,
+        proxyPort: null,
+        proxyType: 'http',
       };
     }
 
@@ -81,6 +90,10 @@ export const adminRouter = router({
       systemDescription: settings.systemDescription,
       maintenanceMode: settings.maintenanceMode,
       maintenanceMessage: settings.maintenanceMessage,
+      proxyEnabled: settings.proxyEnabled ?? false,
+      proxyHost: settings.proxyHost,
+      proxyPort: settings.proxyPort,
+      proxyType: settings.proxyType ?? 'http',
     };
   }),
 
@@ -122,6 +135,10 @@ export const adminRouter = router({
             systemDescription: settings.systemDescription,
             maintenanceMode: settings.maintenanceMode,
             maintenanceMessage: settings.maintenanceMessage,
+            proxyEnabled: settings.proxyEnabled,
+            proxyHost: settings.proxyHost,
+            proxyPort: settings.proxyPort,
+            proxyType: settings.proxyType,
           },
         };
       } catch (err) {

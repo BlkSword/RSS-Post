@@ -206,7 +206,7 @@ export class EmailService {
    * 发送测试邮件
    */
   async sendTestEmail(to: string, username?: string): Promise<SendResult> {
-    const subject = 'Rss-Easy 邮件配置测试';
+    const subject = 'RSS-Post 邮件配置测试';
     const html = this.getTestEmailTemplate(username);
     return this.sendEmail(to, subject, html);
   }
@@ -220,7 +220,7 @@ export class EmailService {
     resetUrl: string,
     expiresIn: string = '1小时'
   ): Promise<SendResult> {
-    const subject = '重置您的 Rss-Easy 密码';
+    const subject = '重置您的 RSS-Post 密码';
     const html = this.getPasswordResetTemplate(username, resetUrl, expiresIn);
     return this.sendEmail(to, subject, html);
   }
@@ -235,7 +235,7 @@ export class EmailService {
     content: string,
     actionUrl?: string
   ): Promise<SendResult> {
-    const subject = `[Rss-Easy] ${title}`;
+    const subject = `[RSS-Post] ${title}`;
     const html = this.getNotificationTemplate(username, title, content, actionUrl);
     return this.sendEmail(to, subject, html);
   }
@@ -259,7 +259,7 @@ export class EmailService {
     },
     pdfAttachment?: EmailAttachment
   ): Promise<SendResult> {
-    const subject = `[Rss-Easy] ${report.title}`;
+    const subject = `[RSS-Post] ${report.title}`;
     const html = this.getReportEmailTemplate(username, report);
     const text = this.stripHtml(report.content || '');
 
@@ -295,7 +295,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Rss-Easy</div>
+      <div class="logo">RSS-Post</div>
       <p>智能 RSS 资讯聚合平台</p>
     </div>
     <div class="content">
@@ -314,8 +314,8 @@ export class EmailService {
       </p>
     </div>
     <div class="footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -356,7 +356,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Rss-Easy</div>
+      <div class="logo">RSS-Post</div>
       <p>智能 RSS 资讯聚合平台</p>
     </div>
     <div class="content">
@@ -390,8 +390,8 @@ export class EmailService {
       </p>
     </div>
     <div class="footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -432,7 +432,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Rss-Easy</div>
+      <div class="logo">RSS-Post</div>
       <p>智能 RSS 资讯聚合平台</p>
     </div>
     <div class="content">
@@ -450,8 +450,8 @@ export class EmailService {
       ` : ''}
     </div>
     <div class="footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -541,7 +541,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Rss-Easy</div>
+      <div class="logo">RSS-Post</div>
       <div class="report-icon">${reportTypeIcon}</div>
       <h1 class="report-title">${safeTitle}</h1>
       <div class="report-type">${reportTypeText}</div>
@@ -589,8 +589,8 @@ export class EmailService {
       </div>
     </div>
     <div class="footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>

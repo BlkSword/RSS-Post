@@ -140,7 +140,7 @@ export default function NotificationsPage() {
         all: utils.notifications.list.getData({ limit: 100, onlyUnread: false }),
         unread: utils.notifications.list.getData({ limit: 100, onlyUnread: true }),
       };
-      const wasUnread = previousNotifications.all?.find(n => n.id === id)?.isRead === false;
+      const wasUnread = previousNotifications.all?.find((n: { id: string; isRead: boolean }) => n.id === id)?.isRead === false;
 
       // 乐观更新：从列表中移除通知
       const removeNotification = (old: any) => {
@@ -416,9 +416,9 @@ export default function NotificationsPage() {
 
                           {/* 操作按钮 */}
                           <div className="flex items-center gap-1">
-                            {(notification.data as NotificationData)?.link && (
+                            {(notification.data as { link?: string })?.link && (
                               <Link
-                                href={(notification.data as NotificationData).link!}
+                                href={(notification.data as { link?: string }).link!}
                                 className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
                               >
                                 查看

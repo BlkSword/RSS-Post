@@ -62,9 +62,9 @@ export async function generateOPML(userId: string): Promise<string> {
   let opml = `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
   <head>
-    <title>Rss-Easy Feeds Export</title>
+    <title>RSS-Post Feeds Export</title>
     <dateCreated>${date}</dateCreated>
-    <ownerName>Rss-Easy User</ownerName>
+    <ownerName>RSS-Post User</ownerName>
   </head>
   <body>
 `;

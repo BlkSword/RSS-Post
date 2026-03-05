@@ -93,21 +93,22 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
   ];
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 外观设置 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            {t('settings.appearance')}
-          </div>
-        }
-      >
-        <div className="space-y-6">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              {t('settings.appearance')}
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-6">
           {/* 主题选择 */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             <label className="text-sm font-medium">{t('settings.theme')}</label>
             <div className="grid grid-cols-3 gap-3">
               {themeOptions.map((item) => {
@@ -148,7 +149,7 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
           </div>
 
           {/* 语言 */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             <label className="text-sm font-medium flex items-center gap-2">
               <Languages className="h-4 w-4 text-muted-foreground" />
               {t('settings.language')}
@@ -178,21 +179,23 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
               })}
             </div>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 阅读设置 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <List className="h-5 w-5 text-primary" />
-            {t('settings.reading')}
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <List className="h-5 w-5 text-primary" />
+              {t('settings.reading')}
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 每页显示文章数 */}
           <div className="space-y-2">
             <label className="text-sm font-medium">{t('settings.items_per_page')}</label>
@@ -269,8 +272,9 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
               />
             </div>
           ))}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 保存按钮 */}
       <div className="flex justify-end">

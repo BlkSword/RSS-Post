@@ -16,7 +16,7 @@ function sleep(ms) {
 
 function checkPostgreSQL() {
   try {
-    execSync('docker exec rss-easy-db-dev pg_isready -U rss_easy', {
+    execSync('docker exec rss-post-db-dev pg_isready -U rss_post', {
       stdio: 'pipe',
       timeout: 5000
     });
@@ -28,7 +28,7 @@ function checkPostgreSQL() {
 
 function checkRedis() {
   try {
-    const result = execSync('docker exec rss-easy-redis-dev redis-cli ping', {
+    const result = execSync('docker exec rss-post-redis-dev redis-cli ping', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000

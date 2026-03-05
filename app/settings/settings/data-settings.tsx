@@ -64,19 +64,20 @@ export function DataSettings({ onOpenDeleteModal }: DataSettingsProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 导出 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
-            导出数据
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-primary" />
+              导出数据
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 导出OPML */}
           <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
             <div className="flex items-center gap-3">
@@ -99,21 +100,23 @@ export function DataSettings({ onOpenDeleteModal }: DataSettingsProps) {
               导出 OPML
             </Button>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 数据清理 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <Trash2 className="h-5 w-5" />
-            数据清理
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <Trash2 className="h-5 w-5" />
+              数据清理
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 清空文章 */}
           <div className="flex items-center justify-between p-4 rounded-xl bg-red-50 dark:bg-red-950/20">
             <div className="flex items-center gap-3">
@@ -163,9 +166,11 @@ export function DataSettings({ onOpenDeleteModal }: DataSettingsProps) {
           </div>
         </div>
       </Card>
+      </div>
 
       {/* 警告提示 */}
-      <Card className="border-amber-500/30 bg-amber-500/5" variant="borderless">
+      <div className="mb-6">
+        <Card className="border-amber-500/30 bg-amber-500/5" variant="borderless">
         <div className="px-6 py-6">
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
@@ -181,7 +186,8 @@ export function DataSettings({ onOpenDeleteModal }: DataSettingsProps) {
             </div>
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

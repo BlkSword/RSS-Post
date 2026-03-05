@@ -186,9 +186,9 @@ function SearchPageContent() {
     (key: string) => {
       switch (key) {
         case 'feedId':
-          return feeds?.items.find((f) => f.id === filters.feedId)?.title;
+          return feeds?.items.find((f: { id: string; title: string }) => f.id === filters.feedId)?.title;
         case 'categoryId':
-          return categories?.find((c) => c.id === filters.categoryId)?.name;
+          return categories?.find((c: { id: string; name: string }) => c.id === filters.categoryId)?.name;
         case 'isRead':
           return filters.isRead ? '已读' : '未读';
         case 'isStarred':
@@ -426,7 +426,7 @@ function SearchPageContent() {
                             setFilters({ ...filters, feedId: value || '' })
                           }
                           className="w-full"
-                          options={feeds?.items.map((feed) => ({
+                          options={feeds?.items.map((feed: { id: string; title: string }) => ({
                             label: feed.title,
                             value: feed.id,
                           }))}
@@ -445,7 +445,7 @@ function SearchPageContent() {
                             setFilters({ ...filters, categoryId: value || '' })
                           }
                           className="w-full"
-                          options={categories?.map((cat) => ({
+                          options={categories?.map((cat: { id: string; name: string }) => ({
                             label: cat.name,
                             value: cat.id,
                           }))}
@@ -573,7 +573,7 @@ function SearchPageContent() {
             ) : (
               <CompactEntryList>
                 <StaggerContainer staggerDelay={40} initialDelay={100}>
-                  {entries.map((entry, index) => (
+                  {entries.map((entry: any, index: number) => (
                     <div
                       key={entry.id}
                       className="transition-all duration-200 hover:translate-x-1"

@@ -1,12 +1,14 @@
 /**
- * 徽章组件
+ * 徽章组件 - 基于 Ant Design Tag
  * 用于展示状态、计数、标签等
  */
 
 import * as React from 'react';
+import { Tag } from 'antd';
+import type { TagProps } from 'antd';
 import { cn } from '@/lib/utils';
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface BadgeProps extends Omit<TagProps, 'color' | 'variant'> {
   variant?:
     | 'default'
     | 'primary'
@@ -19,33 +21,30 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   dot?: boolean;
 }
 
+const variantColorMap = {
+  default: 'default',
+  primary: 'blue',
+  secondary: 'default',
+  success: 'success',
+  warning: 'warning',
+  danger: 'error',
+  info: 'processing',
+};
+
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   (
     { className, variant = 'default', size = 'sm', dot = false, children, ...props },
     ref
   ) => {
-    const variants = {
-      default: 'bg-muted text-muted-foreground',
-      primary: 'bg-primary/15 text-primary border-primary/20',
-      secondary: 'bg-secondary text-secondary-foreground',
-      success: 'bg-green-500/15 text-green-600 border-green-500/20',
-      warning: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/20',
-      danger: 'bg-red-500/15 text-red-600 border-red-500/20',
-      info: 'bg-blue-500/15 text-blue-600 border-blue-500/20',
-    };
-
-    const sizes = {
-      sm: 'text-xs px-2 py-0.5',
-      md: 'text-sm px-2.5 py-0.5',
-    };
+    const color = variantColorMap[variant];
 
     return (
-      <span
+      <Tag
         ref={ref}
+        color={color}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full font-medium border transition-colors',
-          variants[variant],
-          sizes[size],
+          'inline-flex items-center gap-1.5 font-medium',
+          size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-0.5',
           className
         )}
         {...props}
@@ -55,7 +54,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
             className={cn(
               'w-1.5 h-1.5 rounded-full',
               variant === 'default' && 'bg-muted-foreground',
-              variant === 'primary' && 'bg-primary',
+              variant === 'primary' && 'bg-blue-500',
               variant === 'success' && 'bg-green-500',
               variant === 'warning' && 'bg-yellow-500',
               variant === 'danger' && 'bg-red-500',
@@ -64,7 +63,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
           />
         )}
         {children}
-      </span>
+      </Tag>
     );
   }
 );

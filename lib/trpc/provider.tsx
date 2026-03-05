@@ -34,8 +34,12 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
   // 检查是否是 401 错误
   if (response.status === 401) {
-    // 清除本地存储的用户信息并跳转到登录页面
-    if (typeof window !== 'undefined') {
+    const url = input.toString();
+    // 排除 auth.me 端点，因为它在未登录状态返回 401 是正常的
+    // 这个端点用于检查当前登录状态，不应触发自动重定向
+    const isAuthMeEndpoint = url.includes('auth.me');
+
+    if (!isAuthMeEndpoint && typeof window !== 'undefined') {
       localStorage.removeItem('userId');
       window.location.href = '/login';
     }

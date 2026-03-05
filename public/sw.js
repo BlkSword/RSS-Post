@@ -1,9 +1,9 @@
 /**
- * Rss-Easy Service Worker
+ * RSS-Post Service Worker
  * 提供离线缓存和 PWA 支持
  */
 
-const CACHE_NAME = 'rss-easy-v1';
+const CACHE_NAME = 'rss-post-v1';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -146,7 +146,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Rss-Easy', options)
+    self.registration.showNotification(data.title || 'RSS-Post', options)
   );
 });
 

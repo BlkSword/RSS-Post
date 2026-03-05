@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Rss-Easy 一键部署脚本
+# RSS-Post 一键部署脚本
 # 集成安全依赖安装、环境配置、服务启动
 #
 
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo "================================"
-echo "Rss-Easy 一键部署脚本"
+echo "RSS-Post 一键部署脚本"
 echo "================================"
 echo ""
 
@@ -82,7 +82,7 @@ if [ ! -f ".env" ]; then
     sed -i.bak "s/your-super-secret-nextauth-key/$NEXTAUTH_SECRET/g" .env
     sed -i.bak "s/your-encryption-key-here/$ENCRYPTION_KEY/g" .env
     sed -i.bak "s/your-cron-secret-key-here/$CRON_SECRET/g" .env
-    sed -i.bak "s/rss_easy_password/$POSTGRES_PASSWORD/g" .env
+    sed -i.bak "s/rss_post_password/$POSTGRES_PASSWORD/g" .env
     sed -i.bak "s/your-redis-password/$REDIS_PASSWORD/g" .env
 
     rm .env.bak
@@ -114,7 +114,7 @@ if grep -q "JWT_SECRET=your-super-secret-jwt-key-min-32-characters-long" .env; t
     SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
 fi
 
-if grep -q "POSTGRES_PASSWORD=rss_easy_password" .env; then
+if grep -q "POSTGRES_PASSWORD=rss_post_password" .env; then
     echo -e "${YELLOW}[警告] POSTGRES_PASSWORD 使用默认值${NC}"
 fi
 

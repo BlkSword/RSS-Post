@@ -199,7 +199,7 @@ export function SettingsPageContent() {
             </div>
 
             {/* 设置内容 */}
-            <div className="space-y-6">
+            <div>
               {activeTab === 'profile' && <ProfileSettings user={user} />}
               {activeTab === 'preferences' && <PreferencesSettings user={user} />}
               {activeTab === 'security' && <SecuritySettings />}

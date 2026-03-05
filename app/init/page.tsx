@@ -21,7 +21,7 @@ export default function InitPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [systemName, setSystemName] = useState('Rss-Easy');
+  const [systemName, setSystemName] = useState('RSS-Post');
 
   // 表单验证错误
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -195,7 +195,7 @@ export default function InitPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/25 mb-4">
             <Rss className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">欢迎使用 Rss-Easy</h1>
+          <h1 className="text-2xl font-bold">欢迎使用 RSS-Post</h1>
           <p className="text-muted-foreground mt-2">创建超级管理员账户以开始使用</p>
         </div>
 
@@ -211,7 +211,7 @@ export default function InitPage() {
                 type="text"
                 value={systemName}
                 onChange={(e) => setSystemName(e.target.value)}
-                placeholder="Rss-Easy"
+                placeholder="RSS-Post"
                 className={cn(
                   'w-full px-4 py-2.5 rounded-xl border bg-background transition-all duration-200',
                   'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',

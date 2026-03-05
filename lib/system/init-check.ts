@@ -85,7 +85,7 @@ export async function initializeSystemSettings(): Promise<void> {
         isInitialized: false,
         allowRegistration: true,
         defaultUserRole: 'user',
-        systemName: 'Rss-Easy',
+        systemName: 'RSS-Post',
       },
     });
   } catch (err: any) {
@@ -146,13 +146,13 @@ export async function initializeSystem(data: {
       update: {
         isInitialized: true,
         initializedAt: new Date(),
-        systemName: data.systemName || 'Rss-Easy',
+        systemName: data.systemName || 'RSS-Post',
       },
       create: {
         id: 'system',
         isInitialized: true,
         initializedAt: new Date(),
-        systemName: data.systemName || 'Rss-Easy',
+        systemName: data.systemName || 'RSS-Post',
       },
     });
 
@@ -220,4 +220,74 @@ export async function getDefaultUserRole(): Promise<string> {
   } catch {
     return 'user';
   }
+}
+
+/**
+ * 代理配置缓存
+ */
+let proxyConfigCache: {
+  config: {
+    enabled: boolean;
+    host: string | null;
+    port: number | null;
+    type: string;
+  };
+  checkedAt: number;
+} | null = null;
+
+/**
+ * 获取代理配置
+ * 从数据库读取系统代理设置
+ */
+export async function getProxyConfig(): Promise<{
+  enabled: boolean;
+  host: string | null;
+  port: number | null;
+  type: string;
+}> {
+  // 检查缓存（1分钟有效期）
+  if (proxyConfigCache && Date.now() - proxyConfigCache.checkedAt < 60 * 1000) {
+    return proxyConfigCache.config;
+  }
+
+  try {
+    const settings = await db.systemSettings.findUnique({
+      where: { id: 'system' },
+      select: {
+        proxyEnabled: true,
+        proxyHost: true,
+        proxyPort: true,
+        proxyType: true,
+      },
+    });
+
+    const config = {
+      enabled: settings?.proxyEnabled ?? false,
+      host: settings?.proxyHost ?? null,
+      port: settings?.proxyPort ?? null,
+      type: settings?.proxyType ?? 'http',
+    };
+    // 更新缓存
+    proxyConfigCache = {
+      config,
+      checkedAt: Date.now(),
+    };
+
+    return config;
+  } catch (err) {
+    console.error('获取代理配置失败:', err);
+    return {
+      enabled: false,
+      host: null,
+      port: null,
+      type: 'http',
+    };
+  }
+}
+
+/**
+ * 清除代理配置缓存
+ */
+export function clearProxyConfigCache(): void {
+  proxyConfigCache = null;
 }

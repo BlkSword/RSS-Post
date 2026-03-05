@@ -153,11 +153,11 @@ export function LogsSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 级别统计卡片 */}
       {stats?.levelCounts && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {stats.levelCounts.map(({ level, count }) => {
+          {stats.levelCounts.map(({ level, count }: { level: string; count: number }) => {
             const config = levelColors[level] || levelColors.info;
             const Icon = config.icon;
             return (
@@ -202,8 +202,8 @@ export function LogsSettings() {
           {showCategoryStats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {stats.categoryCounts
-                .sort((a, b) => b.count - a.count)
-                .map(({ category, count }) => (
+                .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
+                .map(({ category, count }: { category: string; count: number }) => (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
@@ -226,7 +226,8 @@ export function LogsSettings() {
       )}
 
       {/* 日志列表 */}
-      <Card variant="borderless">
+      <div className="mb-6">
+        <Card className="" variant="borderless">
         <div className="px-6 py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -506,23 +507,25 @@ export function LogsSettings() {
             )}
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* 最近错误 */}
       {stats?.recentErrors && stats.recentErrors.length > 0 && (
-        <Card 
-          className="border-red-200 dark:border-red-800" 
-          variant="borderless"
-          title={
-            <div className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              最近错误
-            </div>
-          }
-        >
+        <div className="mb-6">
+          <Card
+            className="border-red-200 dark:border-red-800"
+            variant="borderless"
+            title={
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                最近错误
+              </div>
+            }
+          >
           <div>
             <div className="space-y-2">
-              {stats.recentErrors.map((error) => (
+              {stats.recentErrors.map((error: any) => (
                 <div
                   key={error.id}
                   className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm group relative"
@@ -557,7 +560,8 @@ export function LogsSettings() {
               ))}
             </div>
           </div>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* 清空日志确认弹窗 */}

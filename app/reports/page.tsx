@@ -638,13 +638,13 @@ export default function ReportsPage() {
     if (!reports) return;
 
     const pendingReports = reports.filter(
-      r => r.status === 'generating' || r.status === 'pending'
+      (r: { status: string }) => r.status === 'generating' || r.status === 'pending'
     );
 
     if (pendingReports.length === 0) return;
 
     // 更新生成中ID集合
-    setGeneratingIds(new Set(pendingReports.map(r => r.id)));
+    setGeneratingIds(new Set(pendingReports.map((r: { id: string }) => r.id)));
 
     // 每3秒刷新一次
     const interval = setInterval(() => {
@@ -656,9 +656,9 @@ export default function ReportsPage() {
 
   // 计算统计数据
   const stats = {
-    total: reports?.filter(r => r.status === 'completed').length || 0,
-    totalEntries: reports?.filter(r => r.status === 'completed').reduce((sum, r) => sum + r.totalEntries, 0) || 0,
-    generating: reports?.filter(r => r.status === 'generating' || r.status === 'pending').length || 0,
+    total: reports?.filter((r: { status: string }) => r.status === 'completed').length || 0,
+    totalEntries: reports?.filter((r: { status: string }) => r.status === 'completed').reduce((sum: number, r: { totalEntries: number }) => sum + r.totalEntries, 0) || 0,
+    generating: reports?.filter((r: { status: string }) => r.status === 'generating' || r.status === 'pending').length || 0,
   };
 
   const startGenerateDaily = trpc.reports.startGenerateDaily.useMutation();
@@ -909,7 +909,7 @@ export default function ReportsPage() {
             ) : (
               <StaggerContainer staggerDelay={80} initialDelay={200}>
                 <div className="space-y-4">
-                  {reports.map((report, index) => (
+                  {reports.map((report: { id: string; title: string; status: string; errorMessage?: string | null; createdAt: Date; aiGenerated?: boolean; summary?: string | null; totalEntries: number; highlights?: string[]; reportType: string }, index: number) => (
                     <ReportCard
                       key={report.id}
                       report={report}

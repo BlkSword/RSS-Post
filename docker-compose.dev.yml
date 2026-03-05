@@ -1,5 +1,5 @@
 # =====================================================
-# Rss-Easy 开发环境配置
+# RSS-Post 开发环境配置
 # 使用方式：docker-compose -f docker-compose.dev.yml up -d
 # 特点：
 # 1. 代码热重载（挂载本地目录）
@@ -11,17 +11,17 @@ services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:16-alpine
-    container_name: rss-easy-db-dev
+    container_name: rss-post-db-dev
     environment:
-      POSTGRES_USER: rss_easy
-      POSTGRES_PASSWORD: rss_easy_password
-      POSTGRES_DB: rss_easy
+      POSTGRES_USER: rss_post
+      POSTGRES_PASSWORD: rss_post_password
+      POSTGRES_DB: rss_post
     ports:
       - "5432:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rss_easy"]
+      test: ["CMD-SHELL", "pg_isready -U rss_post"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
   # Redis 缓存和队列
   redis:
     image: redis:7-alpine
-    container_name: rss-easy-redis-dev
+    container_name: rss-post-redis-dev
     ports:
       - "6379:6379"
     volumes:
@@ -44,10 +44,10 @@ services:
   # 使用方式: docker-compose -f docker-compose.dev.yml up -d postgres redis init
   init:
     image: node:20-alpine
-    container_name: rss-easy-init-dev
+    container_name: rss-post-init-dev
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://rss_easy:rss_easy_password@postgres:5432/rss_easy
+      DATABASE_URL: postgresql://rss_post:rss_post_password@postgres:5432/rss_post
     volumes:
       - ./prisma:/app/prisma
       - ./package.json:/app/package.json
@@ -77,12 +77,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: rss-easy-dev:latest
-    container_name: rss-easy-app-dev
+    image: rss-post-dev:latest
+    container_name: rss-post-app-dev
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://rss_easy:rss_easy_password@postgres:5432/rss_easy
+      DATABASE_URL: postgresql://rss_post:rss_post_password@postgres:5432/rss_post
       REDIS_URL: redis://redis:6379
       NEXTAUTH_SECRET: dev-secret-change-in-production
       NEXTAUTH_URL: http://localhost:3000

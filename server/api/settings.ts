@@ -474,7 +474,7 @@ export const settingsRouter = router({
     let opml = `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
   <head>
-    <title>Rss-Easy 订阅源导出</title>
+    <title>RSS-Post 订阅源导出</title>
     <dateCreated>${new Date().toISOString()}</dateCreated>
   </head>
   <body>
@@ -514,7 +514,7 @@ export const settingsRouter = router({
 
     return {
       opml,
-      filename: `rss-easy-export-${new Date().toISOString().split('T')[0]}.opml`,
+      filename: `rss-post-export-${new Date().toISOString().split('T')[0]}.opml`,
     };
   }),
 

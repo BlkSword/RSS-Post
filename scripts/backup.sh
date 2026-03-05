@@ -1,15 +1,15 @@
 #!/bin/bash
 #
-# Rss-Easy 数据库备份脚本
+# RSS-Post 数据库备份脚本
 # 用于 Docker 环境中的 PostgreSQL 数据库备份
 #
 
 set -e
 
 # 配置（从环境变量读取）
-POSTGRES_USER="${POSTGRES_USER:-rss_easy}"
+POSTGRES_USER="${POSTGRES_USER:-rss_post}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-POSTGRES_DB="${POSTGRES_DB:-rss_easy}"
+POSTGRES_DB="${POSTGRES_DB:-rss_post}"
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 
@@ -24,7 +24,7 @@ DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_${DATE}.sql.gz"
 
 echo "================================"
-echo "Rss-Easy 数据库备份"
+echo "RSS-Post 数据库备份"
 echo "================================"
 echo "开始时间: $(date)"
 echo "数据库: $POSTGRES_DB"

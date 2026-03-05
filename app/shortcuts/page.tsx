@@ -142,7 +142,7 @@ export default function ShortcutsPage() {
               键盘快捷键
             </h1>
             <p className="text-muted-foreground mt-1">
-              使用键盘快捷键可以更高效地使用 Rss-Easy
+              使用键盘快捷键可以更高效地使用 RSS-Post
             </p>
           </div>
         </div>

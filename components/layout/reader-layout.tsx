@@ -196,7 +196,7 @@ export function ReaderLayout({ filters = {} }: ReaderLayoutProps) {
   });
 
   const entries = entriesData?.items || [];
-  const selectedIndex = entries.findIndex((e) => e.id === selectedEntryId);
+  const selectedIndex = entries.findIndex((e: any) => e.id === selectedEntryId);
 
   // 键盘快捷键
   useReaderShortcuts({

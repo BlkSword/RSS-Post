@@ -140,10 +140,10 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             <div className="flex items-center justify-between p-4 border-b border-border/60">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center overflow-hidden">
-                  <img src="/logo-small.png" alt="Rss-Easy" className="w-7 h-7 object-contain" />
+                  <img src="/logo-small.png" alt="RSS-Post" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <h2 className="font-semibold">Rss-Easy</h2>
+                  <h2 className="font-semibold">RSS-Post</h2>
                   <p className="text-xs text-muted-foreground">智能RSS阅读器</p>
                 </div>
               </div>
@@ -192,7 +192,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     分组
                   </h3>
                   <div className="space-y-1">
-                    {categories.map((category) => {
+                    {categories.map((category: any) => {
                       const isExpanded = expandedCategories.has(category.id);
                       return (
                         <div key={category.id}>
@@ -227,7 +227,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                                 className="overflow-hidden"
                               >
                                 <div className="ml-8 mt-1 space-y-1">
-                                  {category.feeds.slice(0, 5).map((feed) => (
+                                  {category.feeds.slice(0, 5).map((feed: any) => (
                                     <Link
                                       key={feed.id}
                                       href={`/?feed=${feed.id}`}

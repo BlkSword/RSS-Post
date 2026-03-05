@@ -1,5 +1,5 @@
 # =====================================================
-# Rss-Easy Dockerfile (性能优化版本)
+# RSS-Post Dockerfile (性能优化版本)
 # 优化点：
 # 1. 更好的缓存层利用
 # 2. 更小的镜像大小
@@ -7,7 +7,7 @@
 # 4. 更快的启动时间
 # 5. BuildKit 缓存加速依赖安装
 # =====================================================
-# 构建命令: DOCKER_BUILDKIT=1 docker build -t rss-easy .
+# 构建命令: DOCKER_BUILDKIT=1 docker build -t rss-post .
 # 或: docker compose build (Docker 20.10+ 默认启用 BuildKit)
 
 # ========== 基础镜像 ==========

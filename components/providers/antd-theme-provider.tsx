@@ -30,6 +30,7 @@ export function AntdThemeProvider({ children }: AntdThemeProviderProps) {
       Card: {
         colorBgContainer: isDark ? '#1e293b' : '#ffffff', // slate-800
       },
+      // 注意：Card 间距由外层容器的 gap 控制，不在这里设置
       Modal: {
         colorBgElevated: isDark ? '#1e293b' : '#ffffff',
       },

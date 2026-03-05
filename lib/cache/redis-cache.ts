@@ -17,7 +17,7 @@ const CACHE_CONFIG = {
   // 随机 TTL 偏移范围（防止缓存雪崩）
   ttlJitter: 30, // ±30 秒
   // 键前缀
-  keyPrefix: 'rss-easy:',
+  keyPrefix: 'rss-post:',
 };
 
 // Redis 客户端实例（懒加载）
@@ -95,6 +95,22 @@ function buildKey(key: string): string {
  * 缓存服务
  */
 export const CacheService = {
+  /**
+   * 检查 Redis 连接
+   */
+  async ping(): Promise<boolean> {
+    try {
+      const client = await getRedisClient();
+      if (!client) {
+        return false;
+      }
+      const result = await client.ping();
+      return result === 'PONG';
+    } catch {
+      return false;
+    }
+  },
+
   /**
    * 获取缓存
    */

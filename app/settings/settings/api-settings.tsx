@@ -563,7 +563,7 @@ export function ApiSettings() {
 
   return (
     <>
-      <Tabs defaultValue="keys" className="space-y-6">
+      <Tabs defaultValue="keys">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="keys">API 密钥</TabsTrigger>
           <TabsTrigger value="docs">API 文档</TabsTrigger>
@@ -571,25 +571,27 @@ export function ApiSettings() {
         </TabsList>
 
         {/* API 密钥管理 */}
-        <TabsContent value="keys" className="space-y-6">
-          <Card 
-            variant="borderless"
-            title={
-              <div className="flex items-center gap-2">
-                <Key className="h-5 w-5 text-primary" />
-                API 密钥管理
-              </div>
-            }
-            extra={
-              <Button
-                type="primary"
-                size="small"
-                icon={<Plus className="h-4 w-4" />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                创建密钥
-              </Button>
-            }
+        <TabsContent value="keys">
+          <div className="mb-6">
+            <Card
+              className=""
+              variant="borderless"
+              title={
+                <div className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  API 密钥管理
+                </div>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<Plus className="h-4 w-4" />}
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  创建密钥
+                </Button>
+              }
           >
             <div>
               {apiKeys.length === 0 ? (
@@ -654,10 +656,12 @@ export function ApiSettings() {
                 </div>
               )}
             </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* 使用说明 */}
-          <Card className="border-primary/20 bg-primary/5" variant="borderless">
+          <div className="mb-6">
+            <Card className="border-primary/20 bg-primary/5" variant="borderless">
             <div className="px-6 py-6">
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -681,21 +685,24 @@ export function ApiSettings() {
                 </div>
               </div>
             </div>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* API 文档 */}
-        <TabsContent value="docs" className="space-y-6">
+        <TabsContent value="docs">
           {/* 概览 */}
-          <Card 
-            variant="borderless"
-            title={
-              <div className="flex items-center gap-2">
-                <Book className="h-5 w-5 text-primary" />
-                API 概览
-              </div>
-            }
-          >
+          <div className="mb-6">
+            <Card
+              className=""
+              variant="borderless"
+              title={
+                <div className="flex items-center gap-2">
+                  <Book className="h-5 w-5 text-primary" />
+                  API 概览
+                </div>
+              }
+            >
             <div className="space-y-4">
               {/* 特性 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -798,18 +805,21 @@ curl -H "Authorization: Bearer rss_xxxxxxxxxxxxxxxx" \\
                 </div>
               </div>
             </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* 端点列表 */}
-          <Card 
-            variant="borderless"
-            title={
-              <div className="flex items-center gap-2">
-                <Code className="h-5 w-5 text-primary" />
-                API 端点
-              </div>
-            }
-          >
+          <div className="mb-6">
+            <Card
+              className=""
+              variant="borderless"
+              title={
+                <div className="flex items-center gap-2">
+                  <Code className="h-5 w-5 text-primary" />
+                  API 端点
+                </div>
+              }
+            >
             <div>
               <div className="divide-y divide-border">
                 {Object.entries(groupedEndpoints).map(([category, endpoints]) => (
@@ -933,21 +943,24 @@ curl -H "Authorization: Bearer rss_xxxxxxxxxxxxxxxx" \\
                 ))}
               </div>
             </div>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* 请求范例 */}
-        <TabsContent value="examples" className="space-y-6">
-          <Card 
-            variant="borderless"
-            title={
-              <div className="flex items-center gap-2">
-                <Code className="h-5 w-5 text-primary" />
-                代码示例
-              </div>
-            }
-          >
-            <div className="space-y-6">
+        <TabsContent value="examples">
+          <div className="mb-6">
+            <Card
+              className=""
+              variant="borderless"
+              title={
+                <div className="flex items-center gap-2">
+                  <Code className="h-5 w-5 text-primary" />
+                  代码示例
+                </div>
+              }
+            >
+            <div className="flex flex-col gap-6">
               {Object.entries(codeExamples).map(([lang, example]) => (
                 <div key={lang} className="space-y-2">
                   <h3 className="font-medium text-sm">{example.title}</h3>
@@ -961,19 +974,22 @@ curl -H "Authorization: Bearer rss_xxxxxxxxxxxxxxxx" \\
                 </div>
               ))}
             </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* 常见场景 */}
-          <Card 
-            variant="borderless"
-            title={
-              <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                常见场景
-              </div>
-            }
-          >
-            <div className="space-y-6">
+          <div className="mb-6">
+            <Card
+              className=""
+              variant="borderless"
+              title={
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  常见场景
+                </div>
+              }
+            >
+            <div className="flex flex-col gap-6">
               {/* 场景1: 获取未读文章 */}
               <div className="space-y-2">
                 <h3 className="font-medium text-sm">获取所有未读文章</h3>
@@ -1047,7 +1063,8 @@ result.data.items.forEach(item => {
                 />
               </div>
             </div>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

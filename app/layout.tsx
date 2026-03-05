@@ -7,14 +7,15 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AntdThemeProvider } from '@/components/providers/antd-theme-provider';
 import { LanguageProvider } from '@/components/providers/language-provider';
 import { PWAProvider } from '@/components/providers/pwa-provider';
+import { MaintenanceGuard } from '@/components/providers/maintenance-guard';
 import { MobileBottomNav } from '@/components/mobile/mobile-bottom-nav';
 import { NetworkStatusToast, InstallPrompt, UpdatePrompt } from '@/components/mobile/mobile-toast';
 
 export const metadata: Metadata = {
-  title: 'Rss-Easy - 智能RSS资讯聚合平台',
+  title: 'RSS-Post - 智能RSS资讯聚合平台',
   description: '支持AI智能摘要、智能分类、全文搜索、日报/周报生成的前沿RSS工具',
   keywords: ['RSS', 'AI', '阅读器', '资讯聚合', '智能摘要'],
-  authors: [{ name: 'Rss-Easy Team' }],
+  authors: [{ name: 'RSS-Post Team' }],
   icons: {
     icon: [
       { url: '/icon.png', sizes: '32x32', type: 'image/png' },
@@ -47,7 +48,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                const theme = localStorage.getItem('rss-easy-theme') || 'system';
+                const theme = localStorage.getItem('rss-post-theme') || 'system';
                 const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const isDark = theme === 'dark' || (theme === 'system' && systemDark);
                 if (isDark) {
@@ -72,13 +73,15 @@ export default function RootLayout({
                 <AntdThemeProvider>
                   <ToastProvider>
                     <TRPCProvider>
-                      {children}
-                      {/* 移动端底部导航 */}
+                      <MaintenanceGuard>
+                        {children}
+                        {/* 移动端底部导航 */}
                       <MobileBottomNav />
                       {/* PWA 提示 */}
                       <NetworkStatusToast />
                       <InstallPrompt />
                       <UpdatePrompt />
+                      </MaintenanceGuard>
                     </TRPCProvider>
                   </ToastProvider>
                 </AntdThemeProvider>

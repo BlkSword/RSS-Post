@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ================================
-echo Rss-Easy 开发环境初始化
+echo RSS-Post 开发环境初始化
 echo ================================
 echo.
 
@@ -46,7 +46,7 @@ set MAX_RETRIES=30
 set RETRY_COUNT=0
 
 :check_db
-docker exec rss-easy-db-dev pg_isready -U rss_easy >nul 2>&1
+docker exec rss-post-db-dev pg_isready -U rss_post >nul 2>&1
 if %errorlevel% equ 0 (
     echo [OK] PostgreSQL 已就绪
     goto :redis_check
@@ -64,7 +64,7 @@ timeout /t 1 /nobreak >nul
 goto :check_db
 
 :redis_check
-docker exec rss-easy-redis-dev redis-cli ping >nul 2>&1
+docker exec rss-post-redis-dev redis-cli ping >nul 2>&1
 if %errorlevel% equ 0 (
     echo [OK] Redis 已就绪
 ) else (

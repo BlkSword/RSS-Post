@@ -320,7 +320,7 @@ export default function RulesPage() {
   };
 
   // 渲染规则卡片
-  const renderRuleCard = (rule: Rule, index: number) => {
+  const renderRuleCard = (rule: any, index: number) => {
     const isDragged = draggedIndex === index;
     const isDragOver = dragOverIndex === index;
     
@@ -530,7 +530,7 @@ export default function RulesPage() {
                       />
                       <div className="w-px h-8 bg-border/60" />
                       <AnimatedCounter
-                        value={rules.filter(r => r.isEnabled).length}
+                        value={rules.filter((r: { isEnabled: boolean }) => r.isEnabled).length}
                         label="启用中"
                         variant="success"
                         duration={800}

@@ -109,7 +109,7 @@ export default function ForgotPasswordPage() {
           {/* Logo 和标题 */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20 mb-6 hover-lift overflow-hidden">
-              <img src="/logo.png" alt="Rss-Easy" className="w-14 h-14 object-contain" />
+              <img src="/logo.png" alt="RSS-Post" className="w-14 h-14 object-contain" />
             </div>
             <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               忘记密码

@@ -111,7 +111,7 @@ export function InstallPrompt() {
             <Download className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold">安装 Rss-Easy</h3>
+            <h3 className="font-semibold">安装 RSS-Post</h3>
             <p className="text-sm text-primary-foreground/80 mt-1">
               添加到主屏幕，获得更好的阅读体验
             </p>

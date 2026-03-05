@@ -1,27 +1,32 @@
 /**
- * 模态框组件
- * 统一的对话框交互，增强动画反馈
+ * 模态框组件 - 基于 Ant Design Modal
+ * 为了保持兼容性，保留原有接口
  */
 
 'use client';
 
 import * as React from 'react';
-import { createPortal } from 'react-dom';
+import { Modal as AntModal, ModalProps as AntModalProps, Button } from 'antd';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
-import { X } from 'lucide-react';
 
-export interface ModalProps {
+export interface ModalProps extends Omit<AntModalProps, 'open' | 'onCancel' | 'width'> {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   description?: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
+  footer?: React.ReactNode;
 }
+
+const sizeMap = {
+  sm: 400,
+  md: 520,
+  lg: 640,
+  xl: 800,
+  full: 'calc(100vw - 32px)',
+};
 
 export function Modal({
   isOpen,
@@ -33,95 +38,34 @@ export function Modal({
   size = 'md',
   showCloseButton = true,
   closeOnOverlayClick = true,
+  className,
+  ...props
 }: ModalProps) {
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  React.useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    full: 'max-w-full mx-4',
-  };
-
-  if (!isOpen || !mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 遮罩 */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm modal-backdrop animate-fadeIn"
-        onClick={closeOnOverlayClick ? onClose : undefined}
-      />
-
-      {/* 内容 */}
-      <div
-        className={cn(
-          'relative w-full modal-glass rounded-3xl overflow-hidden animate-scaleIn',
-          sizes[size]
-        )}
-      >
-        {/* 头部 */}
-        {(title || showCloseButton) && (
-          <div className="flex items-start justify-between px-6 py-5 border-b border-border/60 bg-muted/20">
-            <div className="flex-1">
-              {title && (
-                <h3 className="text-lg font-semibold text-foreground">
-                  {title}
-                </h3>
-              )}
-              {description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {description}
-                </p>
-              )}
-            </div>
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className={cn(
-                  'p-2 -mr-2 rounded-xl hover:bg-muted transition-all duration-200',
-                  'hover:rotate-90 active:scale-95 icon-btn-hover'
-                )}
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
+  return (
+    <AntModal
+      open={isOpen}
+      onCancel={closeOnOverlayClick ? onClose : undefined}
+      title={
+        title ? (
+          <div>
+            <div className="text-lg font-semibold">{title}</div>
+            {description && (
+              <div className="text-sm text-muted-foreground mt-1 font-normal">
+                {description}
+              </div>
             )}
           </div>
-        )}
-
-        {/* 主体 */}
-        <div className="px-6 py-5 max-h-[60vh] overflow-y-auto custom-scrollbar">{children}</div>
-
-        {/* 底部 */}
-        {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border/60 bg-muted/30">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body
+        ) : undefined
+      }
+      footer={footer}
+      width={sizeMap[size]}
+      closable={showCloseButton}
+      maskClosable={closeOnOverlayClick}
+      className={cn('', className)}
+      {...props}
+    >
+      {children}
+    </AntModal>
   );
 }
 
@@ -145,22 +89,19 @@ export function ConfirmModal({
     <Modal
       {...props}
       footer={
-        <>
-          <Button
-            variant="ghost"
-            onClick={props.onClose}
-            className="hover:bg-muted"
-          >
+        <div className="flex justify-end gap-2">
+          <Button onClick={props.onClose} disabled={isConfirmLoading}>
             {cancelText}
           </Button>
           <Button
-            variant={confirmVariant}
+            type="primary"
+            danger={confirmVariant === 'danger'}
             onClick={onConfirm}
-            isLoading={isConfirmLoading}
+            loading={isConfirmLoading}
           >
             {confirmText}
           </Button>
-        </>
+        </div>
       }
     >
       <p className="text-sm text-muted-foreground">

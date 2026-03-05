@@ -81,7 +81,7 @@ export function generatePasswordResetHtml(data: PasswordResetEmailData): string 
   <div class="email-container">
     <!-- 头部 -->
     <div class="email-header">
-      <div class="email-logo">📚 Rss-Easy</div>
+      <div class="email-logo">📚 RSS-Post</div>
       <div class="email-tagline">智能 RSS 资讯聚合平台</div>
     </div>
 
@@ -141,8 +141,8 @@ export function generatePasswordResetHtml(data: PasswordResetEmailData): string 
 
     <!-- 页脚 -->
     <div class="email-footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -157,7 +157,7 @@ export function generatePasswordResetText(data: PasswordResetEmailData): string 
   const displayName = username || '用户';
 
   return `
-Rss-Easy 密码重置
+RSS-Post 密码重置
 =====================================
 
 您好，${displayName}！
@@ -176,8 +176,8 @@ ${resetUrl}
 ---
 发送时间：${new Date().toLocaleString('zh-CN')}
 
-此邮件由 Rss-Easy 系统自动发送，请勿回复。
-© ${new Date().getFullYear()} Rss-Easy. All rights reserved.
+此邮件由 RSS-Post 系统自动发送，请勿回复。
+© ${new Date().getFullYear()} RSS-Post. All rights reserved.
 `.trim();
 }
 
@@ -205,7 +205,7 @@ export function generatePasswordSuccessHtml(username: string | null): string {
 <body>
   <div class="email-container">
     <div class="email-header">
-      <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">📚 Rss-Easy</div>
+      <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">📚 RSS-Post</div>
       <div style="font-size: 14px; opacity: 0.9;">智能 RSS 资讯聚合平台</div>
     </div>
     <div class="email-content">
@@ -220,8 +220,8 @@ export function generatePasswordSuccessHtml(username: string | null): string {
       </div>
     </div>
     <div class="email-footer">
-      <p>此邮件由 Rss-Easy 系统自动发送，请勿回复。</p>
-      <p>© ${new Date().getFullYear()} Rss-Easy. All rights reserved.</p>
+      <p>此邮件由 RSS-Post 系统自动发送，请勿回复。</p>
+      <p>© ${new Date().getFullYear()} RSS-Post. All rights reserved.</p>
     </div>
   </div>
 </body>

@@ -177,21 +177,22 @@ export function AISettings({ user }: AISettingsProps) {
   const needsBaseURL = provider === 'custom' || provider === 'ollama';
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* AI提供商配置 */}
-      <Card 
-        className="overflow-hidden" 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI提供商
-          </div>
-        }
-      >
-        <div className="space-y-6">
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI提供商
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-6">
           {/* 提供商选择 */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             <label className="text-sm font-medium">AI提供商</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {providers.map((item) => {
@@ -322,28 +323,30 @@ export function AISettings({ user }: AISettingsProps) {
               )}
             </div>
           )}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* AI功能设置 */}
-      <Card 
-        className={cn(
-          'overflow-hidden transition-all duration-250',
-          !configValid && 'opacity-60'
-        )} 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            AI功能
-            {!configValid && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                需要先测试连接
-              </span>
-            )}
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className={cn(
+            'overflow-hidden transition-all duration-250',
+            !configValid && 'opacity-60'
+          )}
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              AI功能
+              {!configValid && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                  需要先测试连接
+                </span>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {[
             {
               key: 'autoSummary',
@@ -416,9 +419,11 @@ export function AISettings({ user }: AISettingsProps) {
           })}
         </div>
       </Card>
+      </div>
 
       {/* 使用提示 */}
-      <Card className="border-primary/20 bg-primary/5 overflow-hidden" variant="borderless">
+      <div className="mb-6">
+        <Card className="border-primary/20 bg-primary/5 overflow-hidden" variant="borderless">
         <div className="px-6 py-6">
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -443,11 +448,13 @@ export function AISettings({ user }: AISettingsProps) {
             </div>
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* 测试AI分析 */}
       {configValid && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5 overflow-hidden" variant="borderless">
+        <div className="mb-6">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5 overflow-hidden" variant="borderless">
           <div className="px-6 py-6">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -487,7 +494,8 @@ export function AISettings({ user }: AISettingsProps) {
               </div>
             </div>
           </div>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* 保存按钮 */}

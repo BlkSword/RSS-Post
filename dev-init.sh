@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Rss-Easy 开发环境初始化脚本
+# RSS-Post 开发环境初始化脚本
 # 一键启动数据库并完成初始化
 #
 
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo "================================"
-echo "Rss-Easy 开发环境初始化"
+echo "RSS-Post 开发环境初始化"
 echo "================================"
 echo ""
 
@@ -55,7 +55,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if docker exec rss-easy-db-dev pg_isready -U rss_easy > /dev/null 2>&1; then
+    if docker exec rss-post-db-dev pg_isready -U rss_post > /dev/null 2>&1; then
         echo -e "${GREEN}[OK] PostgreSQL 已就绪${NC}"
         break
     fi
@@ -71,7 +71,7 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
 fi
 
 # 检查 Redis
-if docker exec rss-easy-redis-dev redis-cli ping > /dev/null 2>&1; then
+if docker exec rss-post-redis-dev redis-cli ping > /dev/null 2>&1; then
     echo -e "${GREEN}[OK] Redis 已就绪${NC}"
 else
     echo -e "${YELLOW}[警告] Redis 未就绪，但继续执行${NC}"

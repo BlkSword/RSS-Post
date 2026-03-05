@@ -567,7 +567,7 @@ function EntryList({ feedId, isLoaded }: { feedId: string; isLoaded: boolean }) 
 
   return (
     <div className="space-y-3">
-      {entries.map((entry: { id: string; title: string; url: string; publishedAt?: Date | null; isRead: boolean; isStarred: boolean }, index: number) => (
+      {entries.map((entry: { id: string; title: string; url: string; summary?: string | null; publishedAt?: Date | null; isRead: boolean; isStarred: boolean }, index: number) => (
         <ListItemFade
           key={entry.id}
           index={index}
@@ -593,7 +593,7 @@ function EntryList({ feedId, isLoaded }: { feedId: string; isLoaded: boolean }) 
                 )}
               </div>
               <div className="text-sm text-muted-foreground line-clamp-2 group-hover:text-muted-foreground/80 transition-colors">
-                {entry.summary}
+                {entry.summary || ''}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
                 <Clock className="h-3 w-3" />

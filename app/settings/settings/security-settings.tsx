@@ -49,18 +49,20 @@ export function SecuritySettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 修改密码 */}
-      <Card 
-        variant="borderless"
-        title={
-          <div className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-primary" />
-            修改密码
-          </div>
-        }
-      >
-        <div className="space-y-4">
+      <div className="mb-6">
+        <Card
+          className=""
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              修改密码
+            </div>
+          }
+        >
+          <div className="space-y-4">
           {/* 当前密码 */}
           <div className="space-y-2">
             <label className="text-sm font-medium">当前密码</label>
@@ -181,11 +183,13 @@ export function SecuritySettings() {
               更新密码
             </Button>
           </div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
 
       {/* 安全提示 */}
-      <Card className="border-primary/20 bg-primary/5" variant="borderless">
+      <div className="mb-6">
+        <Card className="border-primary/20 bg-primary/5" variant="borderless">
         <div className="px-6 py-6">
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -202,7 +206,8 @@ export function SecuritySettings() {
             </div>
           </div>
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

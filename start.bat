@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ================================
-echo Rss-Easy 一键部署脚本
+echo RSS-Post 一键部署脚本
 echo 集成安全依赖安装、环境配置、服务启动
 echo ================================
 echo.
@@ -76,7 +76,7 @@ if not exist ".env" (
     echo.
 
     REM 更新 .env 文件（使用 PowerShell）
-    powershell -Command "(Get-Content .env) -replace 'your-super-secret-jwt-key-min-32-characters-long', '%JWT_SECRET%' -replace 'your-super-secret-nextauth-key', '%NEXTAUTH_SECRET%' -replace 'your-encryption-key-here', '%ENCRYPTION_KEY%' -replace 'your-cron-secret-key-here', '%CRON_SECRET%' -replace 'rss_easy_password', '%POSTGRES_PASSWORD%' -replace 'your-redis-password', '%REDIS_PASSWORD%' | Set-Content .env"
+    powershell -Command "(Get-Content .env) -replace 'your-super-secret-jwt-key-min-32-characters-long', '%JWT_SECRET%' -replace 'your-super-secret-nextauth-key', '%NEXTAUTH_SECRET%' -replace 'your-encryption-key-here', '%ENCRYPTION_KEY%' -replace 'your-cron-secret-key-here', '%CRON_SECRET%' -replace 'rss_post_password', '%POSTGRES_PASSWORD%' -replace 'your-redis-password', '%REDIS_PASSWORD%' | Set-Content .env"
 
     echo [√] .env 文件已创建并配置随机密钥
     echo.
@@ -105,7 +105,7 @@ if %errorlevel% equ 0 (
     set /A SECURITY_ISSUES=1
 )
 
-findstr /C:"POSTGRES_PASSWORD=rss_easy_password" .env >nul
+findstr /C:"POSTGRES_PASSWORD=rss_post_password" .env >nul
 if %errorlevel% equ 0 (
     echo [警告] POSTGRES_PASSWORD 使用默认值
 )

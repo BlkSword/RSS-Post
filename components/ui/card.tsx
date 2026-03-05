@@ -1,17 +1,18 @@
 /**
- * 统一卡片组件
- * 支持悬停效果、点击交互和多种变体，增强交互反馈
+ * 统一卡片组件 - 基于 Ant Design Card
+ * 为了保持兼容性，保留原有接口，内部使用 Ant Design Card
  */
 
 import * as React from 'react';
+import { Card as AntCard, CardProps as AntCardProps } from 'antd';
 import { cn } from '@/lib/utils';
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends Omit<AntCardProps, 'size' | 'variant'> {
   isHoverable?: boolean;
   isClickable?: boolean;
   isActive?: boolean;
   variant?: 'default' | 'elevated' | 'outlined' | 'ghost';
-  noPadding?: boolean; // 是否移除默认 padding
+  noPadding?: boolean;
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
@@ -24,61 +25,60 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       variant = 'default',
       noPadding = false,
       children,
+      bodyStyle,
       ...props
     },
     ref
   ) => {
-    const baseStyles = 'rounded-2xl overflow-hidden transition-all duration-300 ease-out';
-
-    const variants = {
-      default: 'bg-card border border-border/60 shadow-sm',
-      elevated: 'bg-card border border-border/40 shadow-lg shadow-primary/5',
-      outlined: 'bg-transparent border-2 border-border/80',
-      ghost: 'bg-transparent border-none',
-    };
-
-    const states = {
-      hoverable: 'hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 hover:border-primary/20 card-warm',
-      clickable: 'cursor-pointer hover:shadow-xl hover:shadow-primary/15 hover:-translate-y-1 active:scale-[0.99] active:translate-y-0 card-warm',
-      active: 'ring-2 ring-primary/30 border-primary/50 shadow-md shadow-primary/10',
+    const variantStyles = {
+      default: '',
+      elevated: 'shadow-lg',
+      outlined: 'border-2',
+      ghost: 'border-none bg-transparent shadow-none',
     };
 
     return (
-      <div
+      <AntCard
         ref={ref}
         className={cn(
-          baseStyles,
-          variants[variant],
-          !noPadding && 'p-4',
-          isHoverable && states.hoverable,
-          isClickable && states.clickable,
-          isActive && states.active,
+          'transition-all duration-300',
+          variantStyles[variant],
+          isHoverable && 'hover:shadow-lg hover:-translate-y-1',
+          isClickable && 'cursor-pointer hover:shadow-xl hover:-translate-y-1 active:scale-[0.99]',
+          isActive && 'ring-2 ring-primary/30 border-primary/50',
           className
         )}
+        styles={{
+          body: {
+            padding: noPadding ? 0 : undefined,
+            ...bodyStyle,
+          },
+        }}
         {...props}
       >
         {children}
-      </div>
+      </AntCard>
     );
   }
 );
 
 Card.displayName = 'Card';
 
+// 为了向后兼容，导出 Card 的子组件（实际使用 antd Card 的常规用法）
 export const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex flex-col space-y-1.5', className)}
+    className={cn('flex flex-col space-y-1.5 mb-4', className)}
     {...props}
   />
 ));
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
+  HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <h3
@@ -105,7 +105,7 @@ export const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('pt-4', className)} {...props} />
+  <div ref={ref} className={cn('', className)} {...props} />
 ));
 CardContent.displayName = 'CardContent';
 
@@ -115,7 +115,7 @@ export const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex items-center pt-4 gap-3', className)}
+    className={cn('flex items-center gap-3 mt-4 pt-4 border-t border-border/60', className)}
     {...props}
   />
 ));

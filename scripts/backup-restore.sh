@@ -1,15 +1,15 @@
 #!/bin/bash
 #
-# Rss-Easy 数据库恢复脚本
+# RSS-Post 数据库恢复脚本
 # 用于从备份文件恢复数据库
 #
 
 set -e
 
 # 配置
-POSTGRES_USER="${POSTGRES_USER:-rss_easy}"
+POSTGRES_USER="${POSTGRES_USER:-rss_post}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-POSTGRES_DB="${POSTGRES_DB:-rss_easy}"
+POSTGRES_DB="${POSTGRES_DB:-rss_post}"
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 

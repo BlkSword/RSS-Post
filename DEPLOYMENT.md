@@ -1,4 +1,4 @@
-# Rss-Easy 生产环境部署指南
+# RSS-Post 生产环境部署指南
 
 ## 目录
 
@@ -51,8 +51,8 @@ echo "REDIS_PASSWORD=$REDIS_PASSWORD"
 ### 3. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/rss-easy.git
-cd rss-easy
+git clone https://github.com/your-username/rss-post.git
+cd rss-post
 ```
 
 ---
@@ -91,10 +91,10 @@ CRON_SECRET=你的-Cron-密钥-至少32字符
 
 # ==================== 数据库配置 ====================
 # PostgreSQL 连接字符串（使用强密码）
-POSTGRES_USER=rss_easy
+POSTGRES_USER=rss_post
 POSTGRES_PASSWORD=你的-数据库-强密码
-POSTGRES_DB=rss_easy
-DATABASE_URL=postgresql://rss_easy:你的数据库密码@postgres:5432/rss_easy?connection_limit=10&pool_timeout=20
+POSTGRES_DB=rss_post
+DATABASE_URL=postgresql://rss_post:你的数据库密码@postgres:5432/rss_post?connection_limit=10&pool_timeout=20
 
 # ==================== Redis 配置 ====================
 # Redis 密码（使用强密码）
@@ -118,7 +118,7 @@ SMTP_SECURE=false
 SMTP_USER=resend
 SMTP_PASSWORD=your-smtp-api-key
 SMTP_FROM_EMAIL=noreply@your-domain.com
-SMTP_FROM_NAME=Rss-Easy
+SMTP_FROM_NAME=RSS-Post
 
 # ==================== 日志配置 ====================
 LOG_LEVEL=info
@@ -247,25 +247,25 @@ docker-compose -f docker-compose.prod.yml ps
 
 ```bash
 # 1. 构建镜像
-docker build -t rss-easy:latest .
+docker build -t rss-post:latest .
 
 # 2. 创建网络
-docker network create rss-easy-network
+docker network create rss-post-network
 
 # 3. 启动数据库
 docker run -d \
-  --name rss-easy-db \
-  --network rss-easy-network \
-  -e POSTGRES_USER=rss_easy \
+  --name rss-post-db \
+  --network rss-post-network \
+  -e POSTGRES_USER=rss_post \
   -e POSTGRES_PASSWORD=your_password \
-  -e POSTGRES_DB=rss_easy \
+  -e POSTGRES_DB=rss_post \
   -v postgres_data:/var/lib/postgresql/data \
   postgres:16-alpine
 
 # 4. 启动 Redis
 docker run -d \
-  --name rss-easy-redis \
-  --network rss-easy-network \
+  --name rss-post-redis \
+  --network rss-post-network \
   -v redis_data:/data \
   redis:7-alpine \
   redis-server --requirepass your_password --appendonly yes
@@ -275,18 +275,18 @@ sleep 10
 
 # 6. 初始化数据库
 docker run --rm \
-  --network rss-easy-network \
-  -e DATABASE_URL=postgresql://rss_easy:your_password@rss-easy-db:5432/rss_easy \
-  rss-easy:latest \
+  --network rss-post-network \
+  -e DATABASE_URL=postgresql://rss_post:your_password@rss-post-db:5432/rss_post \
+  rss-post:latest \
   sh -c "npx prisma generate && npx prisma db push && npx tsx prisma/seed.ts"
 
 # 7. 启动应用
 docker run -d \
-  --name rss-easy-app \
-  --network rss-easy-network \
+  --name rss-post-app \
+  --network rss-post-network \
   -p 3000:3000 \
   --env-file .env \
-  rss-easy:latest
+  rss-post:latest
 ```
 
 ### Docker 安全特性

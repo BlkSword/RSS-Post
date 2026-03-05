@@ -315,7 +315,7 @@ function QueueStatusIndicatorComponent() {
                           <span className="text-sm font-medium">正在处理</span>
                         </div>
                         <div className="space-y-2">
-                          {queue.activeTasks.map((task) => (
+                          {queue.activeTasks.map((task: any) => (
                             <motion.div
                               key={task.id}
                               initial={{ opacity: 0, x: -10 }}
@@ -424,7 +424,7 @@ function QueueStatusIndicatorComponent() {
                           )}
                         </div>
 
-                        {feedsToUpdate.map((feed, index) => (
+                        {feedsToUpdate.map((feed: any, index: number) => (
                           <motion.div
                             key={feed.id}
                             initial={{ opacity: 0, y: 10 }}

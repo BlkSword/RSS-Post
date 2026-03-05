@@ -108,12 +108,12 @@ export default function LoginPage() {
           {/* Logo 和标题 */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20 mb-6 hover-lift overflow-hidden">
-              <img src="/logo.png" alt="Rss-Easy" className="w-14 h-14 object-contain" />
+              <img src="/logo.png" alt="RSS-Post" className="w-14 h-14 object-contain" />
             </div>
             <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               欢迎回来
             </h1>
-            <p className="text-muted-foreground">登录到 Rss-Easy，继续您的阅读之旅</p>
+            <p className="text-muted-foreground">登录到 RSS-Post，继续您的阅读之旅</p>
           </div>
 
           {/* 登录表单 */}

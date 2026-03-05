@@ -551,7 +551,7 @@ export const feedsRouter = router({
         if (!title || !description) {
           const response = await fetch(input.url, {
             headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; Rss-Easy/1.0)',
+              'User-Agent': 'Mozilla/5.0 (compatible; RSS-Post/1.0)',
             },
           });
 

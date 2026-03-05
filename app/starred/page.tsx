@@ -44,7 +44,7 @@ export default function StarredPage() {
   });
 
   const displayEntries = entriesData?.items || [];
-  const selectedIndex = displayEntries.findIndex((e) => e.id === selectedEntryId);
+  const selectedIndex = displayEntries.findIndex((e: { id: string }) => e.id === selectedEntryId);
 
   const handleSelectEntry = useCallback((entryId: string) => {
     setSelectedEntryId(entryId);
@@ -98,7 +98,7 @@ export default function StarredPage() {
               <CompactEntryEmpty message="还没有标记任何星标文章" />
             ) : (
               <CompactEntryList>
-                {displayEntries.map((entry) => (
+                {displayEntries.map((entry: any) => (
                   <CompactEntryItem
                     key={entry.id}
                     id={entry.id}

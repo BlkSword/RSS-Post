@@ -1,6 +1,6 @@
 {
-  "name": "Rss-Easy - 智能RSS资讯聚合平台",
-  "short_name": "Rss-Easy",
+  "name": "RSS-Post - 智能RSS资讯聚合平台",
+  "short_name": "RSS-Post",
   "description": "支持AI智能摘要、智能分类、全文搜索、日报/周报生成的前沿RSS工具",
   "start_url": "/",
   "display": "standalone",

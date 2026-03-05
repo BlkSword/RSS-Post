@@ -49,9 +49,9 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
   const hasChanges = username !== (user?.username || '') || bio !== (user?.bio || '');
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* 用户信息卡片 */}
-      <Card className="overflow-hidden" variant="borderless">
+      <div className="mb-6"><Card className="overflow-hidden" variant="borderless">
         <div className="px-6 py-6">
           <div className="flex items-center gap-6">
             <div className="relative group">
@@ -75,10 +75,10 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
             </div>
           </div>
         </div>
-      </Card>
+      </Card></div>
 
       {/* 编辑表单 */}
-      <Card 
+      <div className="mb-6"><Card 
         className="overflow-hidden" 
         variant="borderless"
         title="基本信息"
@@ -134,7 +134,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
             </Button>
           </div>
         </div>
-      </Card>
+      </Card></div>
     </div>
   );
 }

@@ -368,7 +368,7 @@ export function FeedsManagePageContent() {
     if (selectedIds.size === feeds.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(feeds.map((f) => f.id)));
+      setSelectedIds(new Set(feeds.map((f: { id: string }) => f.id)));
     }
   };
 
@@ -725,7 +725,7 @@ export function FeedsManagePageContent() {
 
                 {/* 列表项 */}
                 {feeds.map((feed, index) => {
-                  const category = categories?.find((c) => c.id === feed.categoryId);
+                  const category = categories?.find((c: { id: string }) => c.id === feed.categoryId);
                   const isSelected = selectedIds.has(feed.id);
 
                   return (
@@ -809,7 +809,7 @@ export function FeedsManagePageContent() {
                                   {feed.lastFetchedAt && (
                                     <div>尝试时间: {formatDate(feed.lastFetchedAt)}</div>
                                   )}
-                                  {feed.errorCount > 1 && (
+                                  {(feed.errorCount || 0) > 1 && (
                                     <div>连续失败: {feed.errorCount} 次</div>
                                   )}
                                 </div>
@@ -845,10 +845,10 @@ export function FeedsManagePageContent() {
                           className="col-span-1 flex items-center justify-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Tooltip title={`总文章: ${feed._count?.entries || 0}${feed.unreadCount > 0 ? `, 未读: ${feed.unreadCount}` : ''}`}>
+                          <Tooltip title={`总文章: ${feed._count?.entries || 0}${(feed.unreadCount || 0) > 0 ? `, 未读: ${feed.unreadCount}` : ''}`}>
                             <div className="text-center">
                               <span className="text-sm font-medium">{feed._count?.entries || 0}</span>
-                              {feed.unreadCount > 0 && (
+                              {(feed.unreadCount || 0) > 0 && (
                                 <span className="text-xs text-primary ml-1">({feed.unreadCount})</span>
                               )}
                             </div>
@@ -1068,7 +1068,7 @@ export function FeedsManagePageContent() {
                     allowClear
                     value={formCategoryId || undefined}
                     onChange={(value) => setFormCategoryId(value || '')}
-                    options={categories?.map((cat) => ({
+                    options={categories?.map((cat: { id: string; name: string; color?: string | null }) => ({
                       label: (
                         <div className="flex items-center gap-2">
                           <span
@@ -1271,7 +1271,7 @@ export function FeedsManagePageContent() {
                             allowClear
                             value={formCategoryId || undefined}
                             onChange={(value) => setFormCategoryId(value || '')}
-                            options={categories?.map((cat) => ({
+                            options={categories?.map((cat: { id: string; name: string; color?: string | null }) => ({
                               label: (
                                 <div className="flex items-center gap-2">
                                   <span
