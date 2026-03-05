@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       '@ant-design/icons',
       'framer-motion',       // 动画库按需导入
       'date-fns',            // 日期库按需导入
-      'highlight.js',        // 代码高亮按需导入
+      // highlight.js 已在代码中手动按需导入，无需在此配置
       '@tanstack/react-query',
       '@tanstack/react-virtual',
     ],
