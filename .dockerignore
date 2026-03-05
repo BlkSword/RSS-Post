@@ -29,8 +29,41 @@ build/
 # 测试
 coverage/
 .nyc_output/
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# 文档和示例
+docs/
+examples/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+.github/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Docker（避免递归）
+Dockerfile*
+docker-compose*.yml
+.docker/
 
 # 其他
 .turbo
 .vercel
 *.log
+backup/
+*.bak
+*.tmp
+*.swp
+.cache/
+.pnpm-store/
