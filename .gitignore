@@ -50,5 +50,8 @@ prisma/migrations/
 *.tmp
 *.temp
 
+# Database backups
+backups/
+
 .claude
 CLAUDE.md
