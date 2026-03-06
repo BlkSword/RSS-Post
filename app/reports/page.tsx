@@ -45,7 +45,7 @@ import { handleApiSuccess, handleApiError, notifySuccess, notifyError } from '@/
 // 动画组件
 import { Fade, StaggerContainer, ListItemFade, HoverLift } from '@/components/animation/fade';
 import { AnimatedCounter } from '@/components/animation/animated-counter';
-import { StatusBadge } from '@/components/ui/status-badge';
+
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -556,12 +556,6 @@ function ReportCard({
                     <h3 className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-1">
                       {report.title}
                     </h3>
-                    {report.aiGenerated && (
-                      <StatusBadge status="processing" pulse>
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        AI 生成
-                      </StatusBadge>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {report.summary || '暂无摘要'}

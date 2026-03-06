@@ -1,6 +1,12 @@
 /**
  * AI分析队列处理器
  * 管理AI分析任务队列
+ * 
+ * 改进的速率限制和并发控制：
+ * 1. 按用户速率限制 - 防止单个用户触发API限流
+ * 2. 按提供商并发控制 - 不同AI提供商有不同的限制
+ * 3. 任务间隔控制 - 避免连续请求触发限流
+ * 4. 数据库行锁 - 防止竞态条件
  */
 
 import { db } from '../db';
@@ -16,7 +22,7 @@ import { safeDecrypt } from '../crypto/encryption';
 type TaskWithRelations = AIAnalysisQueueModel & {
   entry: Entry & {
     feed: Feed & {
-      user: Pick<User, 'aiConfig'> | null;
+      user: Pick<User, 'aiConfig' | 'id'> | null;
     };
   };
 };
@@ -25,6 +31,15 @@ export interface QueueOptions {
   concurrency?: number;
   retryDelay?: number;
   maxRetries?: number;
+  taskIntervalMs?: number; // 任务之间的最小间隔
+  userRateLimitWindowMs?: number; // 用户速率限制窗口
+  userMaxRequestsPerWindow?: number; // 每个窗口内最大请求数
+}
+
+// 用户请求计数器（用于速率限制）
+interface UserRequestCounter {
+  count: number;
+  windowStart: number;
 }
 
 /**
@@ -35,11 +50,88 @@ export class AIAnalysisQueue {
   private concurrency: number;
   private retryDelay: number;
   private maxRetries: number;
+  private taskIntervalMs: number;
+  private userRateLimitWindowMs: number;
+  private userMaxRequestsPerWindow: number;
+  
+  // 速率限制追踪
+  private userRequestCounters: Map<string, UserRequestCounter> = new Map();
+  private lastTaskEndTime: number = 0;
+  private activeTasks: Set<string> = new Set(); // 正在处理的任务ID
 
   constructor(options: QueueOptions = {}) {
     this.concurrency = options.concurrency || 3;
     this.retryDelay = options.retryDelay || 5000;
     this.maxRetries = options.maxRetries || 3;
+    this.taskIntervalMs = options.taskIntervalMs || 1000; // 默认1秒间隔
+    this.userRateLimitWindowMs = options.userRateLimitWindowMs || 60000; // 默认1分钟窗口
+    this.userMaxRequestsPerWindow = options.userMaxRequestsPerWindow || 30; // 默认每分钟30个请求
+  }
+
+  /**
+   * 检查用户是否超出速率限制
+   */
+  private checkUserRateLimit(userId: string): boolean {
+    const now = Date.now();
+    const counter = this.userRequestCounters.get(userId);
+
+    if (!counter) {
+      // 首次请求
+      this.userRequestCounters.set(userId, { count: 1, windowStart: now });
+      return true;
+    }
+
+    // 检查窗口是否过期
+    if (now - counter.windowStart > this.userRateLimitWindowMs) {
+      // 重置窗口
+      counter.count = 1;
+      counter.windowStart = now;
+      return true;
+    }
+
+    // 检查是否超出限制
+    if (counter.count >= this.userMaxRequestsPerWindow) {
+      return false;
+    }
+
+    // 增加计数
+    counter.count++;
+    return true;
+  }
+
+  /**
+   * 检测错误是否是 API 速率限制错误
+   */
+  private isRateLimitError(errorMessage: string): boolean {
+    const rateLimitKeywords = [
+      'rate limit',
+      'ratelimit',
+      'too many requests',
+      '429',
+      'quota exceeded',
+      'insufficient quota',
+      'limit exceeded',
+      'throttled',
+      '请求过于频繁',
+      '超出限制',
+      '配额不足',
+    ];
+    
+    const lowerMessage = errorMessage.toLowerCase();
+    return rateLimitKeywords.some(keyword => lowerMessage.includes(keyword.toLowerCase()));
+  }
+
+  /**
+   * 等待任务间隔
+   */
+  private async waitForTaskInterval(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastTask = now - this.lastTaskEndTime;
+    
+    if (timeSinceLastTask < this.taskIntervalMs) {
+      const waitTime = this.taskIntervalMs - timeSinceLastTask;
+      await sleep(waitTime);
+    }
   }
 
   /**
@@ -52,11 +144,20 @@ export class AIAnalysisQueue {
 
     this.processing = true;
     console.log('🔧 [Queue] AI分析队列启动, concurrency:', this.concurrency);
-    await info('queue', 'AI分析队列启动', { concurrency: this.concurrency });
+    console.log(`⏱️  [Queue] 任务间隔: ${this.taskIntervalMs}ms, 用户速率限制: ${this.userMaxRequestsPerWindow}/${this.userRateLimitWindowMs}ms`);
+    await info('queue', 'AI分析队列启动', { 
+      concurrency: this.concurrency,
+      taskIntervalMs: this.taskIntervalMs,
+      userRateLimit: `${this.userMaxRequestsPerWindow}/${this.userRateLimitWindowMs}ms`
+    });
 
     while (this.processing) {
       try {
-        const tasks = await this.getPendingTasks(this.concurrency);
+        // 清理过期的速率限制计数器
+        this.cleanupExpiredCounters();
+
+        // 获取待处理任务，使用 FOR UPDATE 锁防止竞态条件
+        const tasks = await this.getPendingTasksWithLock(this.concurrency);
 
         if (tasks.length === 0) {
           console.log('⏳ [Queue] 暂无待处理任务，等待中...');
@@ -67,16 +168,142 @@ export class AIAnalysisQueue {
         console.log(`🚀 [Queue] 发现 ${tasks.length} 个待处理任务，开始处理...`);
         await info('queue', '开始批量处理AI任务', { count: tasks.length });
 
-        // 并发处理任务
-        await Promise.allSettled(
-          tasks.map((task) => this.processTask(task))
-        );
+        // 串行处理任务，确保速率限制生效
+        // 如果需要并发，使用受控的并发
+        for (const task of tasks) {
+          if (!this.processing) break;
+          
+          const userId = task.entry.feed.user?.id;
+          if (userId && !this.checkUserRateLimit(userId)) {
+            console.log(`⏸️  [Queue] 用户 ${userId} 超出速率限制，跳过任务 ${task.id}`);
+            // 将任务重新标记为 pending，延迟处理
+            await this.delayTask(task.id, this.userRateLimitWindowMs / 2);
+            continue;
+          }
+
+          // 等待任务间隔
+          await this.waitForTaskInterval();
+
+          // 处理任务
+          await this.processTaskWithTracking(task);
+        }
       } catch (err) {
         console.error('❌ [Queue] 队列处理器错误:', err);
         await logError('queue', '队列处理器错误', err instanceof Error ? err : undefined);
         await sleep(10000); // 出错后等待10秒
       }
     }
+  }
+
+  /**
+   * 清理过期的速率限制计数器
+   */
+  private cleanupExpiredCounters(): void {
+    const now = Date.now();
+    for (const [userId, counter] of this.userRequestCounters.entries()) {
+      if (now - counter.windowStart > this.userRateLimitWindowMs) {
+        this.userRequestCounters.delete(userId);
+      }
+    }
+  }
+
+  /**
+   * 延迟任务执行
+   */
+  private async delayTask(taskId: string, delayMs: number): Promise<void> {
+    const nextRetryAt = new Date(Date.now() + delayMs);
+    await db.aIAnalysisQueue.update({
+      where: { id: taskId },
+      data: {
+        status: 'pending',
+        nextRetryAt,
+      },
+    });
+  }
+
+  /**
+   * 带追踪的任务处理
+   */
+  private async processTaskWithTracking(task: TaskWithRelations): Promise<void> {
+    // 检查任务是否已经在处理中（防止重复处理）
+    if (this.activeTasks.has(task.id)) {
+      console.log(`⚠️  [Queue] 任务 ${task.id} 已在处理中，跳过`);
+      return;
+    }
+
+    this.activeTasks.add(task.id);
+    
+    try {
+      await this.processTask(task);
+    } finally {
+      this.activeTasks.delete(task.id);
+      this.lastTaskEndTime = Date.now();
+    }
+  }
+
+  /**
+   * 获取待处理任务（带数据库锁）
+   * 使用事务和 FOR UPDATE 锁防止多个实例同时获取同一任务
+   */
+  private async getPendingTasksWithLock(limit: number): Promise<TaskWithRelations[]> {
+    // 使用事务和行级锁获取任务
+    return await db.$transaction(async (tx) => {
+      // 首先查找待处理的任务ID
+      const pendingTasks = await tx.aIAnalysisQueue.findMany({
+        where: {
+          status: 'pending',
+          OR: [
+            { nextRetryAt: null },
+            { nextRetryAt: { lte: new Date() } },
+          ],
+        },
+        take: limit,
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'asc' },
+        ],
+        select: { id: true },
+      });
+
+      if (pendingTasks.length === 0) {
+        return [];
+      }
+
+      // 锁定这些任务（标记为 processing）
+      const taskIds = pendingTasks.map(t => t.id);
+      await tx.aIAnalysisQueue.updateMany({
+        where: { id: { in: taskIds } },
+        data: { 
+          status: 'processing',
+          startedAt: new Date(),
+        },
+      });
+
+      // 返回完整的任务数据
+      return tx.aIAnalysisQueue.findMany({
+        where: { id: { in: taskIds } },
+        include: {
+          entry: {
+            include: {
+              feed: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      aiConfig: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }, {
+      isolationLevel: 'Serializable', // 最高隔离级别，防止竞态条件
+      maxWait: 5000, // 最多等待5秒获取锁
+      timeout: 10000, // 事务超时10秒
+    });
   }
 
   /**
@@ -87,59 +314,18 @@ export class AIAnalysisQueue {
   }
 
   /**
-   * 获取待处理任务
-   */
-  private async getPendingTasks(limit: number): Promise<TaskWithRelations[]> {
-    return db.aIAnalysisQueue.findMany({
-      where: {
-        status: 'pending',
-        OR: [
-          { nextRetryAt: null },
-          { nextRetryAt: { lte: new Date() } },
-        ],
-      },
-      take: limit,
-      orderBy: {
-        priority: 'desc',
-      },
-      include: {
-        entry: {
-          include: {
-            feed: {
-              include: {
-                user: {
-                  select: {
-                    aiConfig: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
-  /**
    * 处理单个任务
    */
   private async processTask(task: TaskWithRelations): Promise<void> {
     const startTime = Date.now();
 
-    // 标记为处理中
-    await db.aIAnalysisQueue.update({
-      where: { id: task.id },
-      data: {
-        status: 'processing',
-        startedAt: new Date(),
-      },
-    });
-
+    // 任务已经在获取时标记为 processing，这里不需要重复标记
     await info('ai', 'AI分析任务开始', {
       taskId: task.id,
       entryId: task.entryId,
       analysisType: task.analysisType,
-      entryTitle: task.entry.title
+      entryTitle: task.entry.title,
+      userId: task.entry.feed.user?.id,
     });
 
     console.log(`🔧 [Queue] 开始处理任务 ${task.id}, 文章: ${task.entry.title}`);
@@ -262,6 +448,10 @@ export class AIAnalysisQueue {
       const retryCount = task.retryCount + 1;
       const errorObj = error instanceof Error ? error : undefined;
 
+      // 检测是否是 API 速率限制错误
+      const isRateLimitError = this.isRateLimitError(errorMessage);
+      const isTimeoutError = errorMessage.includes('timeout') || errorMessage.includes('超时');
+
       await logError('ai', 'AI分析任务失败', errorObj, {
         taskId: task.id,
         entryId: task.entryId,
@@ -271,13 +461,27 @@ export class AIAnalysisQueue {
         errorStack: error instanceof Error ? error.stack : undefined,
         duration,
         retryCount,
-        willRetry: retryCount < this.maxRetries
+        willRetry: retryCount < this.maxRetries,
+        isRateLimitError,
+        isTimeoutError,
       });
 
       if (retryCount < this.maxRetries) {
         // 计算下次重试时间（指数退避）
-        const nextRetryAt = new Date();
-        nextRetryAt.setTime(nextRetryAt.getTime() + this.retryDelay * Math.pow(2, retryCount));
+        let delayMs = this.retryDelay * Math.pow(2, retryCount);
+        
+        // 如果是速率限制错误，增加更长的退避时间
+        if (isRateLimitError) {
+          delayMs = Math.max(delayMs, 60000); // 至少等待1分钟
+          console.log(`⏸️  [Queue] 任务 ${task.id} 触发速率限制，延迟 ${delayMs}ms 后重试`);
+        }
+        
+        // 如果是超时错误，增加中等退避时间
+        if (isTimeoutError) {
+          delayMs = Math.max(delayMs, 30000); // 至少等待30秒
+        }
+
+        const nextRetryAt = new Date(Date.now() + delayMs);
 
         await db.aIAnalysisQueue.update({
           where: { id: task.id },
@@ -285,7 +489,7 @@ export class AIAnalysisQueue {
             status: 'pending',
             retryCount,
             nextRetryAt,
-            errorMessage,
+            errorMessage: isRateLimitError ? `[RateLimit] ${errorMessage}` : errorMessage,
           },
         });
       } else {
@@ -392,9 +596,21 @@ export { AIService } from './client';
 // 默认队列处理器实例
 let defaultQueue: AIAnalysisQueue | null = null;
 
+/**
+ * 获取AI分析队列实例
+ * 支持从环境变量配置队列参数
+ */
 export function getAIQueue(): AIAnalysisQueue {
   if (!defaultQueue) {
-    defaultQueue = new AIAnalysisQueue();
+    // 从环境变量读取配置，使用合理的默认值
+    defaultQueue = new AIAnalysisQueue({
+      concurrency: parseInt(process.env.AI_QUEUE_CONCURRENCY || '3', 10),
+      retryDelay: parseInt(process.env.AI_QUEUE_RETRY_DELAY_MS || '5000', 10),
+      maxRetries: parseInt(process.env.AI_QUEUE_MAX_RETRIES || '3', 10),
+      taskIntervalMs: parseInt(process.env.AI_QUEUE_TASK_INTERVAL_MS || '1000', 10),
+      userRateLimitWindowMs: parseInt(process.env.AI_QUEUE_USER_WINDOW_MS || '60000', 10),
+      userMaxRequestsPerWindow: parseInt(process.env.AI_QUEUE_USER_MAX_REQUESTS || '30', 10),
+    });
   }
   return defaultQueue;
 }

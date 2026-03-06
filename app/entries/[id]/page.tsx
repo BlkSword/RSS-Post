@@ -541,7 +541,7 @@ export default function EntryPage() {
 
           {/* AI 侧栏 - 只在桌面端显示 */}
           {!isMobile && (
-            <AIAnalysisSidebar entry={displayEntry} />
+            <AIAnalysisSidebar entry={displayEntry} onAnalysisComplete={refetch} />
           )}
         </main>
       </div>

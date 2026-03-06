@@ -188,6 +188,9 @@ services:
       # Node.js 优化
       NODE_OPTIONS: --max-old-space-size=2048
 
+      # 调度器配置
+      SCHEDULER_AUTO_START: "true"
+
     depends_on:
       postgres:
         condition: service_healthy

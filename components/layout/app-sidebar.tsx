@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useCallback, memo, useMemo } from 'react';
 import {
   Rss,
@@ -34,6 +34,7 @@ export interface AppSidebarProps {
 
 function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { addToast } = useToast();
   const { t } = useLanguage();
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
@@ -41,6 +42,8 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [feedsDisplayLimit, setFeedsDisplayLimit] = useState(10);
+  const FEEDS_PER_PAGE = 10;
 
   // 直接使用 prop，不再使用 useUserPreferences
   const isCollapsed = collapsed;
@@ -56,12 +59,14 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
   const utils = trpc.useUtils();
 
   const createCategory = trpc.categories.add.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       addToast({ type: 'success', title: '分组创建成功' });
       setNewCategoryName('');
       setIsCreateModalOpen(false);
       // 刷新分组列表
       await utils.categories.list.invalidate();
+      // 跳转到添加订阅源页面
+      router.push(`/feeds/manage?feed=add&categoryId=${data.id}`);
     },
     onError: (error) => {
       addToast({ type: 'error', title: '创建失败', message: error.message });
@@ -362,7 +367,7 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
             </div>
           ) : (
             <nav className="space-y-0.5">
-              {feeds?.items.slice(0, 10).map((feed: any) => (
+              {feeds?.items.slice(0, feedsDisplayLimit).map((feed: any) => (
                 <Link
                   key={feed.id}
                   href={`/?feed=${feed.id}`}
@@ -395,14 +400,14 @@ function AppSidebarComponent({ collapsed = false }: AppSidebarProps) {
                   )}
                 </Link>
               ))}
-              {(feeds?.items?.length ?? 0) > 10 && (
-                <Link
-                  href="/feeds/manage"
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-200 hover:translate-x-0.5 group"
+              {(feeds?.items?.length ?? 0) > feedsDisplayLimit && (
+                <button
+                  onClick={() => setFeedsDisplayLimit(prev => prev + FEEDS_PER_PAGE)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-200 hover:translate-x-0.5 group w-full text-left"
                 >
                   <Plus className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
-                  <span>{t('action.see_all')}</span>
-                </Link>
+                  <span>{t('action.load_more')}</span>
+                </button>
               )}
             </nav>
           )}

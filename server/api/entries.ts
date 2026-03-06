@@ -238,6 +238,30 @@ export const entriesRouter = router({
         },
       });
 
+      // 获取 AI 分析相关字段（Prisma 默认查询不会返回 Json 字段）
+      const entryWithAI = await ctx.db.entry.findUnique({
+        where: { id: input.id },
+        select: {
+          aiSummary: true,
+          aiOneLineSummary: true,
+          aiMainPoints: true,
+          aiKeywords: true,
+          aiCategory: true,
+          aiSentiment: true,
+          aiImportanceScore: true,
+          aiScoreDimensions: true,
+          aiAnalyzedAt: true,
+          readingTime: true,
+          contentLength: true,
+          wordCount: true,
+          isOpenSource: true,
+          openSourceRepo: true,
+          openSourceLicense: true,
+          openSourceStars: true,
+          openSourceLanguage: true,
+        },
+      });
+
       if (!entry) {
         throw new TRPCError({ code: 'NOT_FOUND', message: '文章不存在' });
       }
@@ -260,7 +284,11 @@ export const entriesRouter = router({
         },
       });
 
-      return entry;
+      // 合并 AI 分析字段
+      return {
+        ...entry,
+        ...entryWithAI,
+      };
     }),
 
   /**

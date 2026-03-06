@@ -18,8 +18,35 @@ export interface FeedUpdateResult {
   error?: string;
 }
 
+export interface CleanupResult {
+  deletedCount: number;
+  preservedCount: number;
+  errors?: string[];
+}
+
 /** 单个 Feed 抓取超时时间（毫秒） */
 const FEED_FETCH_TIMEOUT = 60000;
+
+/** 默认抓取时间范围（天）- 不限制 */
+export const DEFAULT_FETCH_TIME_RANGES = {
+  unlimited: null,
+  oneMonth: 30,
+  threeMonths: 90,
+  sixMonths: 180,
+  oneYear: 365,
+} as const;
+
+/** 默认文章保留时间（天） */
+export const DEFAULT_ENTRY_RETENTION_DAYS = 90;
+
+/** 抓取时间范围选项 */
+export const FETCH_TIME_RANGE_OPTIONS = [
+  { value: null, label: '不限制', days: null },
+  { value: 30, label: '一个月', days: 30 },
+  { value: 90, label: '三个月', days: 90 },
+  { value: 180, label: '半年', days: 180 },
+  { value: 365, label: '一年', days: 365 },
+] as const;
 
 /**
  * Feed管理器类
@@ -65,9 +92,30 @@ export class FeedManager {
       let entriesUpdated = 0;
       let entryErrors = 0;
 
+      // 计算时间范围过滤
+      const fetchTimeRange = feed.fetchTimeRange;
+      const cutoffDate = fetchTimeRange
+        ? new Date(Date.now() - fetchTimeRange * 24 * 60 * 60 * 1000)
+        : null;
+
+      if (fetchTimeRange) {
+        await info('rss', '启用时间范围过滤', {
+          feedId,
+          fetchTimeRange: `${fetchTimeRange}天`,
+          cutoffDate: cutoffDate!.toISOString(),
+        });
+      }
+
       // 处理每个条目（带容错机制）
       for (const item of parsedFeed.items) {
         try {
+          // 时间范围过滤：如果文章发布时间早于截止时间，则跳过
+          if (cutoffDate && item.pubDate) {
+            if (item.pubDate < cutoffDate) {
+              continue; // 跳过过期文章
+            }
+          }
+
           const contentHash = await generateContentHash(
             `${item.title}${item.link}${item.content || ''}`
           );
@@ -304,22 +352,176 @@ export class FeedManager {
 
   /**
    * 清理旧条目
+   * @param daysToKeep 保留天数
+   * @param userId 可选：指定用户ID，为null则清理所有用户的过期文章
+   * @returns 清理结果
    */
-  async cleanupOldEntries(daysToKeep: number = 90): Promise<number> {
+  async cleanupOldEntries(
+    daysToKeep: number = DEFAULT_ENTRY_RETENTION_DAYS,
+    userId?: string | null
+  ): Promise<CleanupResult> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-    const result = await db.entry.deleteMany({
-      where: {
+    const errors: string[] = [];
+
+    try {
+      await info('rss', '开始清理旧文章', {
+        daysToKeep,
+        cutoffDate: cutoffDate.toISOString(),
+        userId: userId || 'all',
+      });
+
+      // 构建查询条件
+      const whereClause: any = {
         createdAt: {
           lt: cutoffDate,
         },
         isRead: true,
         isStarred: false,
-      },
-    });
+      };
 
-    return result.count;
+      // 如果指定了用户ID，添加用户过滤
+      if (userId) {
+        whereClause.feed = {
+          userId: userId,
+        };
+      }
+
+      // 先统计将要删除的文章数量
+      const toDeleteCount = await db.entry.count({
+        where: whereClause,
+      });
+
+      // 统计符合清理条件但受保护的文章（未读或星标）
+      const protectedWhereClause: any = {
+        createdAt: {
+          lt: cutoffDate,
+        },
+        OR: [
+          { isRead: false },
+          { isStarred: true },
+        ],
+      };
+
+      if (userId) {
+        protectedWhereClause.feed = {
+          userId: userId,
+        };
+      }
+
+      const preservedCount = await db.entry.count({
+        where: protectedWhereClause,
+      });
+
+      // 执行删除
+      const result = await db.entry.deleteMany({
+        where: whereClause,
+      });
+
+      await info('rss', '清理旧文章完成', {
+        daysToKeep,
+        deletedCount: result.count,
+        preservedCount,
+        userId: userId || 'all',
+      });
+
+      return {
+        deletedCount: result.count,
+        preservedCount,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      errors.push(errorMessage);
+      await error('rss', '清理旧文章失败', err instanceof Error ? err : undefined, {
+        daysToKeep,
+        userId: userId || 'all',
+      });
+      return {
+        deletedCount: 0,
+        preservedCount: 0,
+        errors,
+      };
+    }
+  }
+
+  /**
+   * 根据用户设置自动清理过期文章
+   * 遍历所有用户，根据各自的设置清理文章
+   */
+  async autoCleanupByUserSettings(): Promise<{ totalDeleted: number; userCount: number; errors: string[] }> {
+    const errors: string[] = [];
+    let totalDeleted = 0;
+    let userCount = 0;
+
+    try {
+      await info('rss', '开始自动清理：获取用户设置');
+
+      // 获取所有用户及其偏好设置
+      const users = await db.user.findMany({
+        select: {
+          id: true,
+          preferences: true,
+        },
+      });
+
+      for (const user of users) {
+        try {
+          const preferences = (user.preferences as any) || {};
+          
+          // 获取用户的文章保留设置（默认90天）
+          const retentionDays = preferences.entryRetentionDays || DEFAULT_ENTRY_RETENTION_DAYS;
+          
+          // 如果设置为0或负数，表示不自动清理
+          if (retentionDays <= 0) {
+            await info('rss', '用户设置为不自动清理，跳过', {
+              userId: user.id,
+              retentionDays,
+            });
+            continue;
+          }
+
+          const result = await this.cleanupOldEntries(retentionDays, user.id);
+          
+          totalDeleted += result.deletedCount;
+          userCount++;
+
+          await info('rss', '用户自动清理完成', {
+            userId: user.id,
+            deletedCount: result.deletedCount,
+            retentionDays,
+          });
+        } catch (userErr) {
+          const errorMessage = userErr instanceof Error ? userErr.message : 'Unknown error';
+          errors.push(`用户 ${user.id}: ${errorMessage}`);
+          await error('rss', '用户自动清理失败', userErr instanceof Error ? userErr : undefined, {
+            userId: user.id,
+          });
+        }
+      }
+
+      await info('rss', '自动清理全部完成', {
+        totalDeleted,
+        userCount,
+        errorCount: errors.length,
+      });
+
+      return {
+        totalDeleted,
+        userCount,
+        errors: errors.length > 0 ? errors : [],
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      errors.push(errorMessage);
+      await error('rss', '自动清理失败', err instanceof Error ? err : undefined);
+      return {
+        totalDeleted,
+        userCount,
+        errors,
+      };
+    }
   }
 }
 

@@ -13,6 +13,8 @@ import { info, error, warn } from '@/lib/logger';
 import { createEmailServiceFromUser } from '@/lib/email/service';
 import { encrypt, safeDecrypt } from '@/lib/crypto/encryption';
 import { verifyPassword } from '@/lib/auth/password';
+import { AIAnalysisQueue } from '@/lib/ai/queue';
+import { db } from '@/lib/db';
 
 /**
  * 遮蔽敏感字符串，只显示前后几个字符
@@ -118,6 +120,7 @@ export const settingsRouter = router({
         digestFrequency: z.enum(['realtime', 'hourly', 'daily', 'weekly']).optional(),
         notifyNewEntries: z.boolean().optional(),
         notifyErrors: z.boolean().optional(),
+        entryRetentionDays: z.number().min(0).max(3650).optional(), // 0表示不自动清理
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -130,7 +133,11 @@ export const settingsRouter = router({
         },
       });
 
-      await info('system', '更新偏好设置', { userId: ctx.userId });
+      await info('system', '更新偏好设置', { 
+        userId: ctx.userId,
+        hasRetentionDays: input.entryRetentionDays !== undefined,
+        retentionDays: input.entryRetentionDays,
+      });
 
       return user;
     }),
@@ -206,6 +213,21 @@ export const settingsRouter = router({
         provider: updatedConfig.provider,
         configValid: updatedConfig.configValid,
       });
+
+      // 如果配置有效且启用了AI分析功能，触发历史文章分析
+      const configValid = updatedConfig.configValid === true;
+      const autoSummaryEnabled = input.autoSummary === true || (input.autoSummary === undefined && currentConfig.autoSummary === true);
+      const autoCategorizeEnabled = input.autoCategorize === true || (input.autoCategorize === undefined && currentConfig.autoCategorize === true);
+      const aiQueueEnabled = input.aiQueueEnabled === true || (input.aiQueueEnabled === undefined && currentConfig.aiQueueEnabled === true);
+
+      if (configValid && (autoSummaryEnabled || autoCategorizeEnabled || aiQueueEnabled)) {
+        // 异步执行，不阻塞返回结果
+        queueUnanalyzedEntries(ctx.userId).catch(err => {
+          error('ai', '队列化历史未分析文章失败', err instanceof Error ? err : undefined, {
+            userId: ctx.userId,
+          });
+        });
+      }
 
       return user;
     }),
@@ -713,6 +735,7 @@ export const settingsRouter = router({
 
         // 合并配置：数据库配置 + 传入的测试配置
         const dbConfig = (user.aiConfig as any) || {};
+        const wasConfigValid = dbConfig.configValid === true;
 
         // 解密数据库中的API密钥（如果存在）
         const decryptedDbConfig = { ...dbConfig };
@@ -770,6 +793,22 @@ export const settingsRouter = router({
             provider: result.provider,
             model: result.model,
           });
+
+          // 如果配置从无效变为有效，自动将历史未分析文章加入AI分析队列
+          if (!wasConfigValid) {
+            const autoSummary = (updatedConfig as any).autoSummary === true;
+            const autoCategorize = (updatedConfig as any).autoCategorize === true;
+            const aiQueueEnabled = (updatedConfig as any).aiQueueEnabled === true;
+
+            if (autoSummary || autoCategorize || aiQueueEnabled) {
+              // 异步执行，不阻塞返回结果
+              queueUnanalyzedEntries(ctx.userId).catch(err => {
+                error('ai', '队列化历史未分析文章失败', err instanceof Error ? err : undefined, {
+                  userId: ctx.userId,
+                });
+              });
+            }
+          }
         }
 
         return result;
@@ -941,4 +980,222 @@ export const settingsRouter = router({
 
       return { success: true };
     }),
+
+  /**
+   * 手动清理旧文章
+   */
+  cleanupOldEntries: protectedProcedure
+    .input(
+      z.object({
+        daysToKeep: z.number().min(1).max(3650).optional(),
+      }).optional()
+    )
+    .output(
+      z.object({
+        success: z.boolean(),
+        deletedCount: z.number(),
+        preservedCount: z.number(),
+        message: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { feedManager } = await import('@/lib/rss/feed-manager');
+      
+      // 获取用户的保留设置
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.userId },
+        select: { preferences: true },
+      });
+      
+      const preferences = (user?.preferences as any) || {};
+      const retentionDays = input?.daysToKeep ?? preferences.entryRetentionDays ?? 90;
+      
+      const result = await feedManager.cleanupOldEntries(retentionDays, ctx.userId);
+      
+      const message = result.errors && result.errors.length > 0
+        ? `清理完成，删除了 ${result.deletedCount} 篇文章，保留 ${result.preservedCount} 篇（受保护），但有 ${result.errors.length} 个错误`
+        : `清理完成，删除了 ${result.deletedCount} 篇文章，保留 ${result.preservedCount} 篇（未读或星标）`;
+
+      await info('system', '手动清理旧文章', {
+        userId: ctx.userId,
+        retentionDays,
+        deletedCount: result.deletedCount,
+        preservedCount: result.preservedCount,
+      });
+
+      return {
+        success: !result.errors || result.errors.length === 0,
+        deletedCount: result.deletedCount,
+        preservedCount: result.preservedCount,
+        message,
+      };
+    }),
+
+  /**
+   * 获取文章存储统计
+   */
+  getEntryStats: protectedProcedure
+    .output(
+      z.object({
+        totalEntries: z.number(),
+        unreadEntries: z.number(),
+        starredEntries: z.number(),
+        entriesByAge: z.object({
+          last7Days: z.number(),
+          last30Days: z.number(),
+          last90Days: z.number(),
+          last180Days: z.number(),
+          last365Days: z.number(),
+          older: z.number(),
+        }),
+        oldestEntryAt: z.date().nullable(),
+        newestEntryAt: z.date().nullable(),
+        retentionDays: z.number(),
+      })
+    )
+    .query(async ({ ctx }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.userId },
+        select: { preferences: true },
+      });
+      
+      const preferences = (user?.preferences as any) || {};
+      const retentionDays = preferences.entryRetentionDays ?? 90;
+
+      const now = new Date();
+      const [
+        totalEntries,
+        unreadEntries,
+        starredEntries,
+        last7Days,
+        last30Days,
+        last90Days,
+        last180Days,
+        last365Days,
+        older,
+        oldestEntry,
+        newestEntry,
+      ] = await Promise.all([
+        ctx.db.entry.count({
+          where: { feed: { userId: ctx.userId } },
+        }),
+        ctx.db.entry.count({
+          where: { feed: { userId: ctx.userId }, isRead: false },
+        }),
+        ctx.db.entry.count({
+          where: { feed: { userId: ctx.userId }, isStarred: true },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { gte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { gte: new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { gte: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.count({
+          where: {
+            feed: { userId: ctx.userId },
+            createdAt: { lt: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000) },
+          },
+        }),
+        ctx.db.entry.findFirst({
+          where: { feed: { userId: ctx.userId } },
+          orderBy: { createdAt: 'asc' },
+          select: { createdAt: true },
+        }),
+        ctx.db.entry.findFirst({
+          where: { feed: { userId: ctx.userId } },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        }),
+      ]);
+
+      return {
+        totalEntries,
+        unreadEntries,
+        starredEntries,
+        entriesByAge: {
+          last7Days,
+          last30Days,
+          last90Days,
+          last180Days,
+          last365Days,
+          older,
+        },
+        oldestEntryAt: oldestEntry?.createdAt || null,
+        newestEntryAt: newestEntry?.createdAt || null,
+        retentionDays,
+      };
+    }),
 });
+
+/**
+ * 将用户历史未分析的条目加入AI分析队列
+ * 在用户首次成功配置AI时自动调用
+ */
+async function queueUnanalyzedEntries(userId: string): Promise<void> {
+  const BATCH_SIZE = 50; // 每次处理50篇文章
+  const MAX_ENTRIES = 200; // 最多处理最近200篇文章，避免队列过长
+
+  // 查找用户没有AI分析结果的文章
+  const unanalyzedEntries = await db.entry.findMany({
+    where: {
+      feed: { userId },
+      content: { not: null }, // 必须有内容才能分析
+      aiSummary: null, // 没有AI摘要（主要判断条件）
+    },
+    orderBy: {
+      publishedAt: 'desc', // 优先处理最近的文章
+    },
+    take: MAX_ENTRIES,
+    select: {
+      id: true,
+    },
+  });
+
+  if (unanalyzedEntries.length === 0) {
+    await info('ai', '没有需要分析的历史文章', { userId });
+    return;
+  }
+
+  // 分批添加到AI分析队列
+  const tasks = unanalyzedEntries.map(entry => ({
+    entryId: entry.id,
+    analysisType: 'all' as const,
+    priority: 3, // 历史文章优先级较低，让新文章优先处理
+  }));
+
+  // 分批添加任务
+  for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+    const batch = tasks.slice(i, i + BATCH_SIZE);
+    await AIAnalysisQueue.addTasks(batch);
+  }
+
+  await info('ai', '历史文章已加入AI分析队列', {
+    userId,
+    count: unanalyzedEntries.length,
+  });
+}

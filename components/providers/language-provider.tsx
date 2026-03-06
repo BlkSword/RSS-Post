@@ -136,6 +136,7 @@ const translations: Record<Language, Record<string, string>> = {
     'action.learn_more': '了解更多',
     'action.get_started': '开始使用',
     'action.see_all': '查看全部',
+    'action.load_more': '加载更多',
     'action.show_details': '查看详情',
     'action.hide_details': '隐藏详情',
     
@@ -400,6 +401,7 @@ const translations: Record<Language, Record<string, string>> = {
     'action.learn_more': 'Learn More',
     'action.get_started': 'Get Started',
     'action.see_all': 'See All',
+    'action.load_more': 'Load More',
     'action.show_details': 'Show Details',
     'action.hide_details': 'Hide Details',
     

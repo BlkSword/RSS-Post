@@ -122,6 +122,10 @@ SMTP_FROM_NAME=RSS-Post
 
 # ==================== 日志配置 ====================
 LOG_LEVEL=info
+
+# ==================== 调度器配置 ====================
+# 启用后台任务调度器（Feed抓取、AI分析、文章清理）
+SCHEDULER_AUTO_START=true
 ```
 
 ---
@@ -152,6 +156,7 @@ LOG_LEVEL=info
 - [ ] **生产环境特定配置**
   - [ ] NODE_ENV=production
   - [ ] LOG_LEVEL=info（不是 debug）
+  - [ ] SCHEDULER_AUTO_START=true（启用后台任务调度器）
 
 ### 安全功能验证
 
@@ -292,6 +297,24 @@ docker run -d \
 ### Docker 安全特性
 
 生产环境配置已包含以下安全特性：
+
+### 后台任务调度器
+
+生产环境自动启用后台任务调度器（需设置 `SCHEDULER_AUTO_START=true`），包含以下功能：
+
+1. **Feed 自动抓取**
+   - 每小时检查一次需要更新的订阅源
+   - 根据优先级自动调整抓取频率
+
+2. **AI 分析队列处理**
+   - 自动处理待分析的条目
+   - 每 2 分钟检查一次队列
+
+3. **文章自动清理** ⚠️ 新功能
+   - 每天运行一次（凌晨）
+   - 根据用户设置的保留时间清理过期文章
+   - 只删除已读且非星标的文章
+   - 保留时间设置路径：「设置」→「偏好设置」→「文章保留设置」
 
 1. **非 root 用户运行**
    - 容器使用专用用户（UID 1001）
@@ -464,6 +487,34 @@ curl -X POST http://localhost:8915/api/scheduler/trigger \
   -H "Content-Type: application/json" \
   -d '{"type":"both"}'
 ```
+
+#### 4. 文章自动清理不工作
+
+**症状**: 设置了文章保留时间但过期文章未被清理
+
+**解决方案**:
+```bash
+# 1. 检查调度器是否启用
+curl http://localhost:8915/api/scheduler/status
+
+# 2. 确认环境变量已设置
+docker-compose -f docker-compose.prod.yml exec app printenv | grep SCHEDULER
+
+# 3. 如果没有设置，添加环境变量后重启
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.prod.yml up -d
+
+# 4. 手动触发清理
+curl -X POST http://localhost:8915/api/scheduler/trigger \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"cleanup"}'
+```
+
+**配置说明**:
+- 文章保留时间设置在「设置」→「偏好设置」→「文章保留设置」
+- 设置为 `0` 表示不自动清理
+- 清理每天运行一次，删除已读且非星标的过期文章
 
 #### 4. 内存不足
 

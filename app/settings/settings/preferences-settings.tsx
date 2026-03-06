@@ -5,8 +5,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Palette, Save, Sun, Moon, Monitor, List, Check, Languages } from 'lucide-react';
-import { Select, Button, Card, Switch } from 'antd';
+import { Palette, Save, Sun, Moon, Monitor, List, Check, Languages, Archive, Clock } from 'lucide-react';
+import { Select, Button, Card, Switch, Slider, Tooltip } from 'antd';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/trpc/client';
 import { notifySuccess, notifyError } from '@/lib/feedback';
@@ -20,6 +20,14 @@ interface PreferencesSettingsProps {
 type Theme = 'light' | 'dark' | 'system';
 type Language = 'zh-CN' | 'en';
 
+const RETENTION_OPTIONS = [
+  { value: 0, label: '不自动清理', description: '保留所有文章' },
+  { value: 30, label: '30天', description: '保留最近一个月' },
+  { value: 90, label: '90天', description: '保留最近三个月' },
+  { value: 180, label: '180天', description: '保留最近半年' },
+  { value: 365, label: '365天', description: '保留最近一年' },
+];
+
 export function PreferencesSettings({ user }: PreferencesSettingsProps) {
   const prefs = user?.preferences || {};
   const { setTheme: setGlobalTheme } = useTheme();
@@ -31,6 +39,7 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
   const [autoMarkAsRead, setAutoMarkAsRead] = useState(prefs.autoMarkAsRead ?? true);
   const [showFullContent, setShowFullContent] = useState(prefs.showFullContent ?? false);
   const [showUnreadCount, setShowUnreadCount] = useState(prefs.showUnreadCount ?? true);
+  const [entryRetentionDays, setEntryRetentionDays] = useState(prefs.entryRetentionDays ?? 90);
   const [isSaving, setIsSaving] = useState(false);
 
   const { mutate: updatePreferences } = trpc.settings.updatePreferences.useMutation();
@@ -42,7 +51,10 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
       setLanguageState(prefs.language);
       setGlobalLanguage(prefs.language);
     }
-  }, [prefs.theme, prefs.language, setGlobalLanguage]);
+    if (prefs.entryRetentionDays !== undefined) {
+      setEntryRetentionDays(prefs.entryRetentionDays);
+    }
+  }, [prefs.theme, prefs.language, prefs.entryRetentionDays, setGlobalLanguage]);
 
   const handleThemeChange = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -60,7 +72,8 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
     itemsPerPage !== prefs.itemsPerPage ||
     autoMarkAsRead !== (prefs.autoMarkAsRead ?? true) ||
     showFullContent !== (prefs.showFullContent ?? false) ||
-    showUnreadCount !== (prefs.showUnreadCount ?? true);
+    showUnreadCount !== (prefs.showUnreadCount ?? true) ||
+    entryRetentionDays !== (prefs.entryRetentionDays ?? 90);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -72,6 +85,7 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
         autoMarkAsRead,
         showFullContent,
         showUnreadCount,
+        entryRetentionDays,
       });
       notifySuccess(t('toast.saved'));
     } catch (error) {
@@ -79,6 +93,16 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const getRetentionLabel = (days: number) => {
+    const option = RETENTION_OPTIONS.find(o => o.value === days);
+    return option?.label || `${days}天`;
+  };
+
+  const getRetentionDescription = (days: number) => {
+    const option = RETENTION_OPTIONS.find(o => o.value === days);
+    return option?.description || `保留最近${days}天`;
   };
 
   const themeOptions = [
@@ -272,6 +296,71 @@ export function PreferencesSettings({ user }: PreferencesSettingsProps) {
               />
             </div>
           ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* 文章保留设置 */}
+      <div className="mb-6">
+        <Card
+          className="overflow-hidden"
+          variant="borderless"
+          title={
+            <div className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-primary" />
+              文章保留设置
+            </div>
+          }
+        >
+          <div className="space-y-6">
+            {/* 保留时间说明 */}
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/60">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <div className="font-medium">自动清理已读文章</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    系统会自动清理超过保留时间的已读文章。未读文章和星标文章不会被清理。
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 保留时间选择 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">保留时间</label>
+                <Tooltip title={getRetentionDescription(entryRetentionDays)}>
+                  <span className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                    {getRetentionLabel(entryRetentionDays)}
+                  </span>
+                </Tooltip>
+              </div>
+              
+              <div className="grid grid-cols-5 gap-2">
+                {RETENTION_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setEntryRetentionDays(option.value)}
+                    className={cn(
+                      'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                      entryRetentionDays === option.value
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                    )}
+                    title={option.description}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                设置为"不自动清理"将保留所有文章。建议定期清理以节省存储空间。
+              </p>
+            </div>
           </div>
         </Card>
       </div>

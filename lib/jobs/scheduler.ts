@@ -1,18 +1,21 @@
 /**
  * 后台任务调度器
- * 负责 Feed 抓取和 AI 分析的定时调度
+ * 负责 Feed 抓取、AI 分析和文章清理的定时调度
  */
 
-import { feedManager } from '@/lib/rss/feed-manager';
+import { feedManager, DEFAULT_ENTRY_RETENTION_DAYS } from '@/lib/rss/feed-manager';
 import { AIAnalysisQueue, getAIQueue } from '@/lib/ai/queue';
 import { db } from '@/lib/db';
 import { getNotificationService } from '@/lib/notifications/service';
+import { info, error } from '@/lib/logger';
 
 export class TaskScheduler {
   private intervalId: NodeJS.Timeout | null = null;
+  private cleanupIntervalId: NodeJS.Timeout | null = null;
   private isRunning = false;
   private readonly fetchInterval = 60 * 60 * 1000; // 1小时
   private readonly aiProcessInterval = 2 * 60 * 1000; // 2分钟
+  private readonly cleanupInterval = 24 * 60 * 60 * 1000; // 24小时（每天清理一次）
 
   /**
    * 启动调度器
@@ -29,12 +32,18 @@ export class TaskScheduler {
     // 立即执行一次
     this.runFetchCycle();
     this.runAIProcessCycle();
+    this.runCleanupCycle();
 
     // 定期执行 Feed 抓取
     this.intervalId = setInterval(() => {
       this.runFetchCycle();
       this.runAIProcessCycle();
     }, Math.min(this.fetchInterval, this.aiProcessInterval));
+
+    // 定期执行文章清理（每天一次）
+    this.cleanupIntervalId = setInterval(() => {
+      this.runCleanupCycle();
+    }, this.cleanupInterval);
   }
 
   /**
@@ -44,6 +53,10 @@ export class TaskScheduler {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
     }
     this.isRunning = false;
     console.log('[Scheduler] Stopped');
@@ -177,6 +190,30 @@ export class TaskScheduler {
   }
 
   /**
+   * 运行文章清理周期
+   */
+  private async runCleanupCycle() {
+    try {
+      console.log('[Scheduler] Starting cleanup cycle...');
+      
+      const result = await feedManager.autoCleanupByUserSettings();
+      
+      if (result.errors.length > 0) {
+        console.error(`[Scheduler] Cleanup completed with ${result.errors.length} errors`);
+        for (const err of result.errors) {
+          console.error(`[Scheduler] Cleanup error: ${err}`);
+        }
+      }
+      
+      console.log(
+        `[Scheduler] Cleanup cycle complete: ${result.totalDeleted} entries deleted from ${result.userCount} users`
+      );
+    } catch (error) {
+      console.error('[Scheduler] Cleanup cycle error:', error);
+    }
+  }
+
+  /**
    * 手动触发 Feed 抓取
    */
   async triggerFetch() {
@@ -190,6 +227,14 @@ export class TaskScheduler {
   async triggerAIProcess() {
     console.log('[Scheduler] Manual AI process triggered');
     await this.runAIProcessCycle();
+  }
+
+  /**
+   * 手动触发文章清理
+   */
+  async triggerCleanup() {
+    console.log('[Scheduler] Manual cleanup triggered');
+    await this.runCleanupCycle();
   }
 
   /**

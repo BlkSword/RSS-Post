@@ -88,6 +88,7 @@ export function FeedsManagePageContent() {
   const searchParams = useSearchParams();
   const feedIdParam = searchParams.get('feed');
   const editModeParam = searchParams.get('edit');
+  const categoryIdParam = searchParams.get('categoryId'); // 用于创建分组后跳转时自动选择分类
   const isLoaded = usePageLoadAnimation(100);
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -130,6 +131,7 @@ export function FeedsManagePageContent() {
   const [formSiteUrl, setFormSiteUrl] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('');
   const [formFetchInterval, setFormFetchInterval] = useState(3600);
+  const [formFetchTimeRange, setFormFetchTimeRange] = useState<number | null>(null);
   const [formPriority, setFormPriority] = useState(5);
   const [formIsActive, setFormIsActive] = useState(true);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -177,8 +179,12 @@ export function FeedsManagePageContent() {
       setEditingFeedId(feedIdParam);
     } else if (feedIdParam === 'add') {
       setViewMode('add');
+      // 如果有 categoryId 参数，自动选择该分类
+      if (categoryIdParam) {
+        setFormCategoryId(categoryIdParam);
+      }
     }
-  }, [feedIdParam, editModeParam]);
+  }, [feedIdParam, editModeParam, categoryIdParam]);
 
   const { data: editingFeed } = trpc.feeds.byId.useQuery(
     { id: editingFeedId || '' },
@@ -193,6 +199,7 @@ export function FeedsManagePageContent() {
       setFormSiteUrl(editingFeed.siteUrl || '');
       setFormCategoryId(editingFeed.categoryId || '');
       setFormFetchInterval(editingFeed.fetchInterval);
+      setFormFetchTimeRange(editingFeed.fetchTimeRange ?? null);
       setFormPriority(editingFeed.priority);
       setFormIsActive(editingFeed.isActive);
     }
@@ -226,6 +233,7 @@ export function FeedsManagePageContent() {
     setFormSiteUrl('');
     setFormCategoryId('');
     setFormFetchInterval(3600);
+    setFormFetchTimeRange(null);
     setFormPriority(5);
     setFormIsActive(true);
   };
@@ -286,6 +294,7 @@ export function FeedsManagePageContent() {
           siteUrl: formSiteUrl,
           categoryId: formCategoryId || undefined,  // 空字符串转为 undefined，避免 UUID 验证错误
           fetchInterval: formFetchInterval,
+          fetchTimeRange: formFetchTimeRange,
           priority: formPriority,
           isActive: formIsActive,
         });
@@ -1172,6 +1181,34 @@ export function FeedsManagePageContent() {
                           { label: '中', value: 5 },
                           { label: '高', value: 10 },
                         ]}
+                      />
+                    </div>
+
+                    {/* 抓取时间范围 */}
+                    <div className="md:col-span-2">
+                      <div className="mb-2">
+                        <label className="text-sm font-medium">抓取时间范围</label>
+                        <span className="text-xs text-muted-foreground ml-2">只抓取指定时间范围内的文章</span>
+                      </div>
+                      <Select
+                        value={formFetchTimeRange}
+                        onChange={setFormFetchTimeRange}
+                        className="w-full"
+                        allowClear
+                        placeholder="不限制（抓取所有文章）"
+                        options={[
+                          { label: '不限制', value: null, description: '抓取所有文章' },
+                          { label: '最近30天', value: 30, description: '只抓取最近一个月的文章' },
+                          { label: '最近90天', value: 90, description: '只抓取最近三个月的文章' },
+                          { label: '最近180天', value: 180, description: '只抓取最近半年的文章' },
+                          { label: '最近365天', value: 365, description: '只抓取最近一年的文章' },
+                        ]}
+                        optionRender={(option) => (
+                          <div>
+                            <div className="font-medium">{option.label}</div>
+                            <div className="text-xs text-muted-foreground">{option.data.description}</div>
+                          </div>
+                        )}
                       />
                     </div>
                   </div>

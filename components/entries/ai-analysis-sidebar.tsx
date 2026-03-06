@@ -33,7 +33,6 @@ import {
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from 'antd';
-import { Typewriter } from '@/components/animation/typewriter';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
@@ -105,6 +104,7 @@ interface AIAnalysisSidebarProps {
     openSourceStars?: number | null;
     openSourceLanguage?: string | null;
   };
+  onAnalysisComplete?: () => void;
 }
 
 // =====================================================
@@ -250,7 +250,7 @@ function RelatedEntryCard({ entry }: { entry: RelatedEntry }) {
 // 主组件
 // =====================================================
 
-export function AIAnalysisSidebar({ entry }: AIAnalysisSidebarProps) {
+export function AIAnalysisSidebar({ entry, onAnalysisComplete }: AIAnalysisSidebarProps) {
   // 获取 AI 配置状态（优先检查）
   const { data: aiConfigStatus, isLoading: isLoadingConfig } = trpc.queue.aiConfigStatus.useQuery();
 
@@ -261,7 +261,17 @@ export function AIAnalysisSidebar({ entry }: AIAnalysisSidebarProps) {
   // 获取分析状态（只有 AI 配置后才查询）
   const { data: analysisStatus, refetch: refetchStatus } = trpc.queue.entryAnalysisStatus.useQuery(
     { entryId: entry.id },
-    { enabled: !!entry.id && isAIConfigured }
+    {
+      enabled: !!entry.id && isAIConfigured,
+      refetchInterval: (data) => {
+        // 如果正在处理或排队中，每 2 秒刷新一次
+        const status = (data as { status?: string })?.status;
+        if (status === 'processing' || status === 'pending') {
+          return 2000;
+        }
+        return false;
+      },
+    }
   );
 
   // 触发分析
@@ -270,6 +280,13 @@ export function AIAnalysisSidebar({ entry }: AIAnalysisSidebarProps) {
       refetchStatus();
     },
   });
+
+  // 监听分析状态，完成后刷新 entry 数据
+  useEffect(() => {
+    if (analysisStatus?.status === 'completed' && onAnalysisComplete) {
+      onAnalysisComplete();
+    }
+  }, [analysisStatus?.status, onAnalysisComplete]);
 
   // 获取相关阅读
   const { data: relatedEntries, isLoading: isLoadingRelated } = trpc.entries.relatedEntries.useQuery(
@@ -418,12 +435,7 @@ export function AIAnalysisSidebar({ entry }: AIAnalysisSidebarProps) {
                 icon={<FileText className="w-4 h-4 text-blue-500" />}
               >
                 <div className="text-sm text-muted-foreground leading-relaxed mt-2">
-                  <Typewriter
-                    text={entry.aiSummary}
-                    speed={15}
-                    delay={100}
-                    showCursor={false}
-                  />
+                  {entry.aiSummary}
                 </div>
               </CollapsibleSection>
             )}

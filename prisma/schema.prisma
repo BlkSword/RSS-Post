@@ -59,30 +59,31 @@ model Category {
 }
 
 model Feed {
-  id            String    @id @default(uuid())
-  userId        String    @map("user_id")
-  categoryId    String?   @map("category_id")
-  title         String
-  description   String?
-  feedUrl       String    @map("feed_url")
-  siteUrl       String?   @map("site_url")
-  iconUrl       String?   @map("icon_url")
-  faviconUrl    String?   @map("favicon_url")
-  lastFetchedAt DateTime? @map("last_fetched_at")
-  lastSuccessAt DateTime? @map("last_success_at")
-  nextFetchAt   DateTime? @map("next_fetch_at")
-  fetchInterval Int       @default(3600) @map("fetch_interval")
-  etag          String?
-  lastModified  String?   @map("last_modified")
-  errorCount    Int       @default(0) @map("error_count")
-  lastError     String?   @map("last_error")
-  isActive      Boolean   @default(true) @map("is_active")
-  totalEntries  Int       @default(0) @map("total_entries")
-  unreadCount   Int       @default(0) @map("unread_count")
-  priority      Int       @default(5)
-  tags          String[]  @default([])
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  categoryId      String?   @map("category_id")
+  title           String
+  description     String?
+  feedUrl         String    @map("feed_url")
+  siteUrl         String?   @map("site_url")
+  iconUrl         String?   @map("icon_url")
+  faviconUrl      String?   @map("favicon_url")
+  lastFetchedAt   DateTime? @map("last_fetched_at")
+  lastSuccessAt   DateTime? @map("last_success_at")
+  nextFetchAt     DateTime? @map("next_fetch_at")
+  fetchInterval   Int       @default(3600) @map("fetch_interval")
+  fetchTimeRange  Int?      @map("fetch_time_range") // 抓取时间范围（天），null表示不限制
+  etag            String?
+  lastModified    String?   @map("last_modified")
+  errorCount      Int       @default(0) @map("error_count")
+  lastError       String?   @map("last_error")
+  isActive        Boolean   @default(true) @map("is_active")
+  totalEntries    Int       @default(0) @map("total_entries")
+  unreadCount     Int       @default(0) @map("unread_count")
+  priority        Int       @default(5)
+  tags            String[]  @default([])
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
   entries       Entry[]
   category      Category? @relation(fields: [categoryId], references: [id])
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -161,6 +161,7 @@ export const feedsRouter = router({
       categoryId: z.string().uuid().optional(),
       tags: z.array(z.string()).optional(),
       fetchInterval: z.number().min(60).max(86400).optional(),
+      fetchTimeRange: z.number().min(1).max(365).nullable().optional(),
       priority: z.number().min(1).max(10).optional(),
       description: z.string().optional(),
       siteUrl: z.string().url().optional(),
@@ -230,6 +231,7 @@ export const feedsRouter = router({
           categoryId: input.categoryId,
           tags: input.tags || [],
           fetchInterval: input.fetchInterval || 3600,
+          fetchTimeRange: input.fetchTimeRange ?? null,
           priority: input.priority || 5,
           nextFetchAt: new Date(), // 立即抓取
         },
@@ -261,6 +263,7 @@ export const feedsRouter = router({
       categoryId: z.string().uuid().optional(),
       tags: z.array(z.string()).optional(),
       fetchInterval: z.number().min(60).max(86400).optional(),
+      fetchTimeRange: z.number().min(1).max(365).nullable().optional(),
       priority: z.number().min(1).max(10).optional(),
       description: z.string().optional(),
       siteUrl: z.string().url().optional(),
@@ -273,17 +276,19 @@ export const feedsRouter = router({
         updates: Object.keys(input).filter(k => k !== 'id')
       });
 
-      const { id, url, ...data } = input;
+      const { id, url, fetchTimeRange, ...data } = input;
+      
+      // 构建更新数据
+      const updateData: any = { ...data };
+      if (url) updateData.feedUrl = url;
+      if (fetchTimeRange !== undefined) updateData.fetchTimeRange = fetchTimeRange;
 
       const feed = await ctx.db.feed.update({
         where: {
           id,
           userId: ctx.userId,
         },
-        data: {
-          ...data,
-          ...(url && { feedUrl: url }),
-        },
+        data: updateData,
       });
 
       await info('rss', '订阅源更新成功', {

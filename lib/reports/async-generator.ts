@@ -94,9 +94,13 @@ export class AsyncReportGenerator {
       });
 
       if (existing) {
-        // 如果报告已完成，直接返回
+        // 如果报告已完成，返回错误提示已存在
         if (existing.status === 'completed') {
-          return { success: true, report: existing };
+          return { 
+            success: false, 
+            error: `该${reportType === 'daily' ? '日' : '周'}的报告已存在，无法重复生成`,
+            report: existing 
+          };
         }
         // 如果正在生成中，返回现有报告
         if (existing.status === 'generating' || existing.status === 'pending') {
