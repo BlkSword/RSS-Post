@@ -33,6 +33,7 @@ import {
   XCircle,
   AlertTriangle,
   Database,
+  RotateCcw,
 } from 'lucide-react';
 import { Button, Input, Card, Space, Modal, Badge, Tag, Tooltip, Switch, Select, Empty, Tabs, Progress, Upload } from 'antd';
 import type { MenuProps } from 'antd';
@@ -157,6 +158,8 @@ export function FeedsManagePageContent() {
   const bulkAction = trpc.feeds.bulkAction.useMutation();
   const discoverFeed = trpc.feeds.discover.useMutation();
   const refreshFeed = trpc.feeds.refresh.useMutation();
+  const retryFailedFeeds = trpc.feeds.retryFailed.useMutation();
+  const { data: failedFeedsData } = trpc.feeds.getFailedFeeds.useQuery();
 
   // OPML 导入相关
   const { mutateAsync: previewOPML } = trpc.settings.previewOPML.useMutation();
@@ -382,6 +385,37 @@ export function FeedsManagePageContent() {
     }
   };
 
+  // 批量重试失败的订阅源
+  const handleRetryFailed = async () => {
+    Modal.confirm({
+      title: '批量重试失败的订阅源',
+      content: (
+        <div>
+          <p>确定要重试 <span className="font-medium text-orange-500">{failedFeedsData?.total || 0}</span> 个失败的订阅源吗</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            系统将重新检查这些订阅源的可达性，并尝试重新获取内容。
+          </p>
+        </div>
+      ),
+      okText: '开始重试',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const result = await retryFailedFeeds.mutateAsync({
+            onlyWithErrors: true,
+          });
+          notifySuccess(
+            '重试任务已提交',
+            `已将 ${result.retried} 个订阅源添加到重试队列`
+          );
+          refetch();
+        } catch (error) {
+          notifyError('重试失败', error instanceof Error ? error.message : '请稍后重试');
+        }
+      },
+    });
+  };
+
   // 手动抓取单个订阅源
   const handleFetchFeed = async (feedId: string, feedTitle: string) => {
     setFetchingFeedIds(prev => new Set(prev).add(feedId));
@@ -560,6 +594,18 @@ export function FeedsManagePageContent() {
                     loading={isRefreshing}
                   />
                 </Tooltip>
+                {(failedFeedsData?.total ?? 0) > 0 && (
+                  <Tooltip title={`重试 ${failedFeedsData?.total ?? 0} 个失败的订阅源`}>
+                    <Button
+                      icon={<AlertCircle className="h-4 w-4 text-orange-500" />}
+                      onClick={handleRetryFailed}
+                      loading={retryFailedFeeds.isPending}
+                      className="text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+                    >
+                      重试失败 ({failedFeedsData?.total ?? 0})
+                    </Button>
+                  </Tooltip>
+                )}
                 <Button
                   type="primary"
                   icon={<Plus className="h-4 w-4" />}

@@ -634,4 +634,119 @@ export const feedsRouter = router({
         });
       }
     }),
+
+  /**
+   * 批量重试失败的订阅源
+   * 将失败的订阅源重新添加到发现队列
+   */
+  retryFailed: protectedProcedure
+    .input(z.object({
+      feedIds: z.array(z.string()).optional(),
+      onlyWithErrors: z.boolean().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { feedIds, onlyWithErrors = true } = input;
+
+      // 查询需要重试的订阅源
+      const whereClause: any = {
+        userId: ctx.userId,
+        isActive: true,
+      };
+
+      if (feedIds && feedIds.length > 0) {
+        whereClause.id = { in: feedIds };
+      } else if (onlyWithErrors) {
+        whereClause.errorCount = { gt: 0 };
+      }
+
+      const failedFeeds = await ctx.db.feed.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          feedUrl: true,
+          title: true,
+          errorCount: true,
+          lastError: true,
+        },
+        take: 50, // 限制一次最多重试 50 个
+      });
+
+      if (failedFeeds.length === 0) {
+        return {
+          success: true,
+          retried: 0,
+          message: '没有需要重试的订阅源',
+        };
+      }
+
+      // 添加到发现队列
+      const { addFeedDiscoveryJobsBatch } = await import('@/lib/queue/feed-discovery-processor');
+
+      const jobs = failedFeeds.map((feed) => ({
+        feedId: feed.id,
+        feedUrl: feed.feedUrl,
+        userId: ctx.userId,
+        triggerFetch: true,
+      }));
+
+      const jobIds = await addFeedDiscoveryJobsBatch(jobs);
+
+      // 重置错误计数
+      await ctx.db.feed.updateMany({
+        where: {
+          id: { in: failedFeeds.map((f) => f.id) },
+        },
+        data: {
+          errorCount: 0,
+          lastError: null,
+        },
+      });
+
+      await info('rss', '批量重试失败的订阅源', {
+        userId: ctx.userId,
+        feedCount: failedFeeds.length,
+        feedIds: failedFeeds.map((f) => f.id),
+      });
+
+      return {
+        success: true,
+        retried: failedFeeds.length,
+        jobIds,
+        feeds: failedFeeds.map((f) => ({
+          id: f.id,
+          title: f.title,
+          feedUrl: f.feedUrl,
+        })),
+      };
+    }),
+
+  /**
+   * 获取失败的订阅源列表
+   */
+  getFailedFeeds: protectedProcedure
+    .query(async ({ ctx }) => {
+      const failedFeeds = await ctx.db.feed.findMany({
+        where: {
+          userId: ctx.userId,
+          errorCount: { gt: 0 },
+        },
+        select: {
+          id: true,
+          title: true,
+          feedUrl: true,
+          errorCount: true,
+          lastError: true,
+          lastFetchedAt: true,
+        },
+        orderBy: {
+          errorCount: 'desc',
+        },
+        take: 100,
+      });
+
+      return {
+        feeds: failedFeeds,
+        total: failedFeeds.length,
+      };
+    }),
 });
