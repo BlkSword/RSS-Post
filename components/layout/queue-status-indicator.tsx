@@ -108,7 +108,7 @@ function QueueStatusIndicatorComponent() {
   }, [isExpanded]);
 
   const queue = monitor?.queue ?? { pending: 0, processing: 0, completed: 0, failed: 0, total: 0, activeTasks: [] };
-  const feeds = monitor?.feeds ?? { total: 0, active: 0, errors: 0, toUpdate: 0, recentlyFetched: 0, healthScore: 100 };
+  const feeds = monitor?.feeds ?? { total: 0, active: 0, successful: 0, errors: 0, toUpdate: 0, recentlyFetched: 0, healthScore: 100 };
   const entries = monitor?.entries ?? { total: 0, lastHour: 0, lastDay: 0, unread: 0, starred: 0 };
   const scheduler = monitor?.scheduler ?? { isRunning: false, fetchInterval: 0, aiProcessInterval: 0 };
   const health = monitor?.health ?? { status: 'healthy', message: '' };
@@ -348,8 +348,8 @@ function QueueStatusIndicatorComponent() {
                           <span className="font-medium">{feeds.total}</span>
                         </div>
                         <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                          <span className="text-muted-foreground">活跃</span>
-                          <span className="font-medium text-green-500">{feeds.active}</span>
+                          <span className="text-muted-foreground">成功</span>
+                          <span className="font-medium text-green-500">{feeds.successful}</span>
                         </div>
                         <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
                           <span className="text-muted-foreground">待更新</span>

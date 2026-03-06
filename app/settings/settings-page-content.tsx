@@ -17,7 +17,6 @@ import {
   Sparkles,
   Shield,
   Mail,
-  ScrollText,
   Settings,
   Users,
 } from 'lucide-react';
@@ -33,11 +32,10 @@ import { DataSettings } from './settings/data-settings';
 import { NotificationSettings } from './settings/notification-settings';
 import { AISettings } from './settings/ai-settings';
 import { EmailSettings } from './settings/email-settings';
-import { LogsSettings } from './settings/logs-settings';
 import { AdminSettings } from './settings/admin-settings';
 import { usePermission } from '@/hooks/use-permission';
 
-type TabKey = 'profile' | 'preferences' | 'security' | 'api' | 'data' | 'notifications' | 'ai' | 'email' | 'logs' | 'admin';
+type TabKey = 'profile' | 'preferences' | 'security' | 'api' | 'data' | 'notifications' | 'ai' | 'email' | 'admin';
 
 const baseTabs = [
   { key: 'profile' as TabKey, label: '个人资料', icon: User, adminOnly: false },
@@ -47,7 +45,6 @@ const baseTabs = [
   { key: 'email' as TabKey, label: '邮件配置', icon: Mail, adminOnly: false },
   { key: 'notifications' as TabKey, label: '通知设置', icon: Bell, adminOnly: false },
   { key: 'ai' as TabKey, label: 'AI配置', icon: Sparkles, adminOnly: false },
-  { key: 'logs' as TabKey, label: '系统日志', icon: ScrollText, adminOnly: true },
   { key: 'data' as TabKey, label: '数据管理', icon: Database, adminOnly: false },
   { key: 'admin' as TabKey, label: '系统管理', icon: Settings, adminOnly: true },
 ];
@@ -207,7 +204,6 @@ export function SettingsPageContent() {
               {activeTab === 'notifications' && <NotificationSettings user={user} />}
               {activeTab === 'ai' && <AISettings user={user} />}
               {activeTab === 'email' && <EmailSettings user={user} />}
-              {activeTab === 'logs' && <LogsSettings />}
               {activeTab === 'admin' && <AdminSettings />}
               {activeTab === 'data' && (
                 <DataSettings onOpenDeleteModal={() => setIsDeleteModalOpen(true)} />

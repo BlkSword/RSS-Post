@@ -18,6 +18,8 @@ import {
   FileSearch,
   Bookmark,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button, Input, Spin, Select, Badge } from 'antd';
 import { AppHeader } from '@/components/layout/app-header';
@@ -52,6 +54,7 @@ function SearchPageContent() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   const isPageLoaded = usePageLoadAnimation(100);
 
   // 搜索历史
@@ -67,11 +70,27 @@ function SearchPageContent() {
     isStarred: false,
   });
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // 当搜索条件改变时重置页码
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filters.feedId, filters.categoryId, filters.isRead, filters.isStarred]);
+
+  // 页面切换时滚动到顶部
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
   // 获取搜索结果
   const { data: searchResults, isLoading } = trpc.entries.list.useQuery(
     {
-      page: 1,
-      limit: 50,
+      page: currentPage,
+      limit: pageSize,
       search: hasSearched ? query : undefined,
       feedId: filters.feedId || undefined,
       unreadOnly: filters.isRead === true ? true : undefined,
@@ -87,6 +106,10 @@ function SearchPageContent() {
   const { data: categories } = trpc.categories.list.useQuery();
 
   const entries = searchResults?.items || [];
+  const totalCount = searchResults?.pagination?.total || 0;
+  const totalPages = searchResults?.pagination?.totalPages || 0;
+  const hasNext = searchResults?.pagination?.hasNext || false;
+  const hasPrev = searchResults?.pagination?.hasPrev || false;
   const selectedEntryId = null;
 
   // 添加到搜索历史
@@ -211,7 +234,7 @@ function SearchPageContent() {
         </aside>
 
         {/* 主内容区 */}
-        <main className="flex-1 overflow-y-auto bg-background/30">
+        <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-background/30">
           <div className="max-w-5xl mx-auto px-6 py-8">
             {/* 搜索框区域 */}
             <Fade in={isPageLoaded} direction="up" distance={20} duration={400}>
@@ -508,7 +531,12 @@ function SearchPageContent() {
                       ) : (
                         <>
                           <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          找到 <strong className="text-foreground mx-1">{entries.length}</strong> 篇文章
+                          找到 <strong className="text-foreground mx-1">{totalCount}</strong> 篇文章
+                          {totalCount > pageSize && (
+                            <span className="text-muted-foreground/60">
+                              (第 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} 篇)
+                            </span>
+                          )}
                         </>
                       )}
                     </span>
@@ -571,29 +599,90 @@ function SearchPageContent() {
                 />
               </Fade>
             ) : (
-              <CompactEntryList>
-                <StaggerContainer staggerDelay={40} initialDelay={100}>
-                  {entries.map((entry: any, index: number) => (
-                    <div
-                      key={entry.id}
-                      className="transition-all duration-200 hover:translate-x-1"
-                    >
-                      <CompactEntryItem
-                        id={entry.id}
-                        title={entry.title}
-                        url={entry.url}
-                        feedTitle={entry.feed.title}
-                        feedIconUrl={entry.feed.iconUrl}
-                        publishedAt={entry.publishedAt}
-                        isRead={entry.isRead}
-                        isStarred={entry.isStarred}
-                        isActive={selectedEntryId === entry.id}
-                        onClick={() => router.push(`/entries/${entry.id}`)}
-                      />
+              <>
+                <CompactEntryList>
+                  <StaggerContainer staggerDelay={40} initialDelay={100}>
+                    {entries.map((entry: any, index: number) => (
+                      <div
+                        key={entry.id}
+                        className="transition-all duration-200 hover:translate-x-1"
+                      >
+                        <CompactEntryItem
+                          id={entry.id}
+                          title={entry.title}
+                          url={entry.url}
+                          feedTitle={entry.feed.title}
+                          feedIconUrl={entry.feed.iconUrl}
+                          publishedAt={entry.publishedAt}
+                          isRead={entry.isRead}
+                          isStarred={entry.isStarred}
+                          isActive={selectedEntryId === entry.id}
+                          onClick={() => router.push(`/entries/${entry.id}`)}
+                        />
+                      </div>
+                    ))}
+                  </StaggerContainer>
+                </CompactEntryList>
+
+                {/* 分页控件 */}
+                {totalCount > pageSize && (
+                  <Fade in delay={200} direction="up" distance={10}>
+                    <div className="flex items-center justify-center gap-2 mt-6 py-4">
+                      <Button
+                        type="text"
+                        disabled={!hasPrev}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        icon={<ChevronLeft className="h-4 w-4" />}
+                        className="disabled:opacity-40"
+                      >
+                        上一页
+                      </Button>
+
+                      <div className="flex items-center gap-1">
+                        {/* 页码显示 */}
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              type={currentPage === pageNum ? 'primary' : 'text'}
+                              size="small"
+                              onClick={() => setCurrentPage(pageNum)}
+                              className="min-w-[32px]"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                      </div>
+
+                      <span className="text-sm text-muted-foreground px-2">
+                        共 {totalPages} 页
+                      </span>
+
+                      <Button
+                        type="text"
+                        disabled={!hasNext}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        className="disabled:opacity-40"
+                      >
+                        下一页
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
                     </div>
-                  ))}
-                </StaggerContainer>
-              </CompactEntryList>
+                  </Fade>
+                )}
+              </>
             )}
           </div>
         </main>

@@ -1,18 +1,20 @@
 /**
  * 未读文章页面 - 三栏布局（优化版）
  * 使用懒加载优化首屏加载速度
+ * 支持分页浏览所有未读文章
  */
 
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
-import { Clock } from 'lucide-react';
+import { useState, useCallback, Suspense, useEffect, useRef } from 'react';
+import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { AppHeader } from '@/components/layout/app-header';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { CompactEntryList, CompactEntryItem, CompactEntryEmpty } from '@/components/entries/compact-entry-list';
 import { LazyArticlePreviewPanel } from '@/components/lazy';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /** 预览面板加载骨架屏 */
@@ -35,16 +37,35 @@ function PreviewSkeleton() {
 export default function UnreadPage() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(30);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   const { data: entriesData, isLoading } = trpc.entries.list.useQuery({
-    page: 1,
-    limit: 50,
+    page: currentPage,
+    limit: pageSize,
     unreadOnly: true,
   });
 
   const displayEntries = entriesData?.items || [];
+  const pagination = entriesData?.pagination;
   const selectedIndex = displayEntries.findIndex((e: { id: string }) => e.id === selectedEntryId);
+
+  // 页面变化时滚动到顶部
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+    // 切换页面时清除选中
+    setSelectedEntryId(null);
+  }, [currentPage]);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
+      setCurrentPage(newPage);
+    }
+  }, [pagination?.totalPages]);
 
   const handleSelectEntry = useCallback((entryId: string) => {
     setSelectedEntryId(entryId);
@@ -84,12 +105,12 @@ export default function UnreadPage() {
                 <h2 className="font-semibold">未读文章</h2>
               </div>
               <div className="text-xs text-muted-foreground">
-                {displayEntries.length} 篇
+                {pagination ? `${pagination.total} 篇` : `${displayEntries.length} 篇`}
               </div>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div ref={mainContentRef} className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center text-sm text-muted-foreground">加载中...</div>
@@ -114,6 +135,41 @@ export default function UnreadPage() {
                   />
                 ))}
               </CompactEntryList>
+            )}
+
+            {/* 分页控件 */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex-shrink-0 px-4 py-3 border-t border-border/60 bg-background/50">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!pagination.hasPrev}
+                    className="h-8 px-2"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    上一页
+                  </Button>
+
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span>{currentPage}</span>
+                    <span>/</span>
+                    <span>{pagination.totalPages}</span>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!pagination.hasNext}
+                    className="h-8 px-2"
+                  >
+                    下一页
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </section>

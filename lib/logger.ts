@@ -1,6 +1,7 @@
 /**
  * 系统日志记录器
  * 用于记录应用运行时的各种日志信息
+ * 自动清理旧日志以限制存储占用
  */
 
 import { db } from './db';
@@ -14,6 +15,7 @@ interface LogOptions {
   message: string;
   details?: Record<string, any>;
   userId?: string;
+  feedId?: string;
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -23,6 +25,43 @@ interface LogOptions {
   memory?: number;
   source?: string;
   tags?: string[];
+}
+
+// 日志存储限制配置
+const MAX_LOG_COUNT = 10000; // 最大日志数量
+const CLEANUP_THRESHOLD = 12000; // 触发清理的阈值
+const CLEANUP_BATCH_SIZE = 2000; // 每次清理的数量
+let lastCleanupTime = 0;
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 清理间隔：1小时
+
+/**
+ * 清理旧日志
+ */
+async function cleanupOldLogs() {
+  try {
+    const count = await db.systemLog.count();
+    if (count > CLEANUP_THRESHOLD) {
+      // 获取需要保留的最旧日志的日期
+      const logsToKeep = await db.systemLog.findMany({
+        select: { createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        skip: MAX_LOG_COUNT - CLEANUP_BATCH_SIZE,
+        take: 1,
+      });
+
+      if (logsToKeep.length > 0) {
+        const cutoffDate = logsToKeep[0].createdAt;
+        const result = await db.systemLog.deleteMany({
+          where: {
+            createdAt: { lt: cutoffDate },
+          },
+        });
+        console.log(`[Logger] Cleaned up ${result.count} old logs, current count: ${count - result.count}`);
+      }
+    }
+  } catch (e) {
+    console.error('[Logger] Failed to cleanup old logs:', e);
+  }
 }
 
 /**
@@ -36,6 +75,7 @@ export async function log(options: LogOptions) {
       message,
       details,
       userId,
+      feedId,
       requestId,
       ipAddress,
       userAgent,
@@ -54,6 +94,7 @@ export async function log(options: LogOptions) {
         message,
         details: details || {},
         userId,
+        feedId,
         requestId,
         ipAddress,
         userAgent,
@@ -65,8 +106,16 @@ export async function log(options: LogOptions) {
         tags: tags || [],
       },
     });
+
+    // 定期检查并清理旧日志
+    const now = Date.now();
+    if (now - lastCleanupTime > CLEANUP_INTERVAL) {
+      lastCleanupTime = now;
+      // 异步执行清理，不阻塞日志写入
+      cleanupOldLogs().catch(console.error);
+    }
   } catch (e) {
-    // 如果日志写入失败，输出到控制台
+    // 如果日志写入失败， 输出到控制台
     console.error('Failed to write log:', e);
     console.error('Original log:', options);
   }
@@ -75,22 +124,40 @@ export async function log(options: LogOptions) {
 /**
  * 快捷方法：调试日志
  */
-export function debug(category: LogCategory, message: string, details?: Record<string, any>, userId?: string) {
-  return log({ level: 'debug', category, message, details, userId });
+export function debug(
+  category: LogCategory,
+  message: string,
+  details?: Record<string, any>,
+  userId?: string,
+  feedId?: string
+) {
+  return log({ level: 'debug', category, message, details, userId, feedId });
 }
 
 /**
  * 快捷方法：信息日志
  */
-export function info(category: LogCategory, message: string, details?: Record<string, any>, userId?: string) {
-  return log({ level: 'info', category, message, details, userId });
+export function info(
+  category: LogCategory,
+  message: string,
+  details?: Record<string, any>,
+  userId?: string,
+  feedId?: string
+) {
+  return log({ level: 'info', category, message, details, userId, feedId });
 }
 
 /**
  * 快捷方法：警告日志
  */
-export function warn(category: LogCategory, message: string, details?: Record<string, any>, userId?: string) {
-  return log({ level: 'warn', category, message, details, userId });
+export function warn(
+  category: LogCategory,
+  message: string,
+  details?: Record<string, any>,
+  userId?: string,
+  feedId?: string
+) {
+  return log({ level: 'warn', category, message, details, userId, feedId });
 }
 
 /**
@@ -101,7 +168,8 @@ export function error(
   message: string,
   errorObj?: Error,
   details?: Record<string, any>,
-  userId?: string
+  userId?: string,
+  feedId?: string
 ) {
   return log({
     level: 'error',
@@ -110,6 +178,7 @@ export function error(
     error: errorObj,
     details,
     userId,
+    feedId,
   });
 }
 
@@ -121,7 +190,8 @@ export function fatal(
   message: string,
   errorObj?: Error,
   details?: Record<string, any>,
-  userId?: string
+  userId?: string,
+  feedId?: string
 ) {
   return log({
     level: 'fatal',
@@ -130,6 +200,7 @@ export function fatal(
     error: errorObj,
     details,
     userId,
+    feedId,
   });
 }
 
@@ -138,6 +209,7 @@ export function fatal(
  */
 export function createLogger(context: {
   userId?: string;
+  feedId?: string;
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;

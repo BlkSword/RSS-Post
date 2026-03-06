@@ -26,15 +26,43 @@ export const feedsRouter = router({
       isActive: z.boolean().optional(),
     }))
     .query(async ({ input, ctx }) => {
-      const { page, limit, ...filters } = input;
+      const { page, limit, search, categoryId, tag, isActive } = input;
       const skip = (page - 1) * limit;
+
+      // 构建搜索条件
+      const where: any = {
+        userId: ctx.userId,
+      };
+
+      // 分类过滤
+      if (categoryId) {
+        where.categoryId = categoryId;
+      }
+
+      // 标签过滤
+      if (tag) {
+        where.tags = { has: tag };
+      }
+
+      // 状态过滤
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
+      // 搜索功能：匹配标题、描述、URL
+      if (search && search.trim()) {
+        const searchTerm = search.trim();
+        where.OR = [
+          { title: { contains: searchTerm, mode: 'insensitive' } },
+          { description: { contains: searchTerm, mode: 'insensitive' } },
+          { feedUrl: { contains: searchTerm, mode: 'insensitive' } },
+          { siteUrl: { contains: searchTerm, mode: 'insensitive' } },
+        ];
+      }
 
       const [feeds, total] = await Promise.all([
         ctx.db.feed.findMany({
-          where: {
-            ...filters,
-            userId: ctx.userId,
-          },
+          where,
           skip,
           take: limit,
           orderBy: { updatedAt: 'desc' },
@@ -47,12 +75,7 @@ export const feedsRouter = router({
             },
           },
         }),
-        ctx.db.feed.count({
-          where: {
-            ...filters,
-            userId: ctx.userId,
-          },
-        }),
+        ctx.db.feed.count({ where }),
       ]);
 
       // 优化：使用单次聚合查询获取所有订阅源的未读数量

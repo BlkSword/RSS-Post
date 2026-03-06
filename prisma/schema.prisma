@@ -457,6 +457,7 @@ model SystemLog {
   message    String
   details    Json?
   userId     String?  @map("user_id")
+  feedId     String?  @map("feed_id")
   requestId  String?  @map("request_id")
   ipAddress  String?  @map("ip_address")
   userAgent  String?  @map("user_agent")
@@ -471,6 +472,7 @@ model SystemLog {
   @@index([level])
   @@index([category])
   @@index([userId])
+  @@index([feedId])
   @@index([createdAt])
   @@index([level, category])
   @@index([level, createdAt])

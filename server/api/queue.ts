@@ -13,6 +13,49 @@ import { getFeedDiscoveryQueueStatus } from '@/lib/queue/feed-discovery-processo
 import { getQueueStatus as getPreliminaryQueueStatus } from '@/lib/queue/preliminary-processor';
 import { getQueueStatus as getDeepAnalysisQueueStatus } from '@/lib/queue/deep-analysis-processor';
 
+// 详细监控返回类型
+interface DetailedMonitorResult {
+  feeds: {
+    total: number;
+    active: number;
+    successful: number;
+    errors: number;
+    toUpdate: number;
+    recentlyFetched: number;
+    healthScore: number;
+  };
+  entries: {
+    total: number;
+    lastHour: number;
+    lastDay: number;
+    unread: number;
+    starred: number;
+  };
+  queue: {
+    pending: number;
+    processing: number;
+    completed: number;
+    failed: number;
+    total: number;
+    activeTasks: Array<{
+      id: string;
+      entryTitle: string;
+      feedTitle: string;
+      processingTime: number;
+    }>;
+  };
+  scheduler: {
+    isRunning: boolean;
+    fetchInterval: number;
+    aiProcessInterval: number;
+  };
+  health: {
+    status: 'healthy' | 'warning';
+    message: string;
+  };
+  timestamp: string;
+}
+
 // BullMQ 队列状态类型
 interface BullMQQueueStatus {
   waiting: number;
@@ -629,7 +672,7 @@ export const queueRouter = router({
    * 数据隔离：只显示用户自己的数据
    */
   detailedMonitor: protectedProcedure
-    .query(async ({ ctx }) => {
+    .query(async ({ ctx }): Promise<DetailedMonitorResult> => {
       const userId = ctx.userId!;
       const userFeedIds = await getUserFeedIds(userId);
       const now = new Date();
@@ -643,6 +686,7 @@ export const queueRouter = router({
           feeds: {
             total: 0,
             active: 0,
+            successful: 0,
             errors: 0,
             toUpdate: 0,
             recentlyFetched: 0,
@@ -681,6 +725,7 @@ export const queueRouter = router({
         // Feed 统计
         totalFeeds,
         activeFeeds,
+        successfulFeeds,
         errorFeeds,
         feedsToUpdate,
         recentlyFetchedFeeds,
@@ -704,6 +749,7 @@ export const queueRouter = router({
         // Feed 统计（仅用户的）
         db.feed.count({ where: { userId } }),
         db.feed.count({ where: { userId, isActive: true } }),
+        db.feed.count({ where: { userId, lastSuccessAt: { gte: sevenDaysAgo } } }),
         db.feed.count({ where: { userId, errorCount: { gt: 0 } } }),
         db.feed.count({
           where: {
@@ -788,10 +834,11 @@ export const queueRouter = router({
         feeds: {
           total: totalFeeds,
           active: activeFeeds,
+          successful: successfulFeeds,
           errors: errorFeeds,
           toUpdate: feedsToUpdate,
           recentlyFetched: recentlyFetchedFeeds,
-          healthScore: totalFeeds > 0 ? Math.round((activeFeeds - errorFeeds) / totalFeeds * 100) : 100,
+          healthScore: totalFeeds > 0 ? Math.round((successfulFeeds) / totalFeeds * 100) : 100,
         },
 
         // 文章状态

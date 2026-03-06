@@ -1,6 +1,7 @@
 /**
  * 报告生成服务
  * 支持日报、周报的AI生成，以及PDF导出和邮件发送
+ * 使用深度报告生成器生成更完整的报告
  */
 
 import { db } from '../db';
@@ -10,6 +11,7 @@ import { getUserAIConfig } from '../ai/health-check';
 import { convertMarkdownToPdf } from './pdf-converter';
 import { createSystemEmailService } from '../email/service';
 import { info, warn, error } from '../logger';
+import { getDeepReportGenerator, DeepReportOptions } from './deep-report-generator';
 import type { Report, Entry } from '@prisma/client';
 
 export interface ReportEntry {
@@ -57,53 +59,21 @@ export class ReportGenerator {
       return existing;
     }
 
-    // 获取用户 AI 配置
+    // 使用深度报告生成器
+    const deepGenerator = getDeepReportGenerator();
+    const { content, summary, stats } = await deepGenerator.generateReport(userId, {
+      reportType: 'daily',
+      reportDate,
+      maxEntriesPerCategory: 8,
+      maxCategories: 10,
+    });
+
+    // 获取AI模型信息
     const aiConfig = await getUserAIConfig(userId, db);
+    const aiModel = aiConfig?.model || 'gpt-4o';
 
-    // 计算日期范围（当天）
-    const startDate = new Date(reportDate);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(reportDate);
-    endDate.setHours(23, 59, 59, 999);
-
-    // 获取统计数据
-    const stats = await this.getStats(userId, startDate, endDate);
-
-    // 获取高优先级文章
-    const entries = await this.getTopEntries(userId, startDate, endDate, 10);
-
-    // 生成报告内容
-    let content: string;
-    let summary: string;
-    let highlights: string[] = [];
-    let topics: any;
-    let aiModel: string | null = null;
-
-    if (aiGenerated) {
-      // AI生成 - 使用用户配置
-      const aiService = new AIService({
-        provider: (aiConfig?.provider as any) || 'openai',
-        model: aiConfig?.model || 'gpt-4o',
-        apiKey: aiConfig?.apiKey,
-        baseURL: aiConfig?.baseURL,
-        maxTokens: 4000,
-        temperature: 0.7,
-      });
-      aiModel = aiConfig?.model || 'gpt-4o';
-
-      const aiContent = await this.generateAIContent(aiService, entries, stats, 'daily', reportDate);
-      content = aiContent.content;
-      summary = aiContent.summary;
-      highlights = aiContent.highlights;
-      topics = aiContent.topics;
-    } else {
-      // 模板生成
-      const templateContent = await this.generateTemplateContent(entries, stats, 'daily', reportDate);
-      content = templateContent.content;
-      summary = templateContent.summary;
-      highlights = templateContent.highlights;
-      topics = templateContent.topics;
-    }
+    // 提取高亮文章
+    const highlights = stats.topKeywords.slice(0, 5).map(k => k.keyword);
 
     // 创建报告记录
     const report = await db.report.create({
@@ -114,7 +84,10 @@ export class ReportGenerator {
         title: this.generateTitle('daily', reportDate),
         summary,
         highlights,
-        topics,
+        topics: {
+          topTopics: stats.topKeywords.slice(0, 10),
+          categories: stats.categories.slice(0, 10).map(c => ({ name: c.name, count: c.entries.length })),
+        },
         totalEntries: stats.totalEntries,
         totalFeeds: stats.totalFeeds,
         format: 'markdown',
@@ -125,7 +98,8 @@ export class ReportGenerator {
     });
 
     // 关联文章
-    await this.linkEntriesToReport(report.id, entries);
+    const allEntries = stats.categories.flatMap(c => c.entries);
+    await this.linkEntriesToReport(report.id, allEntries.slice(0, 50));
 
     // 发送报告就绪通知
     const notificationService = getNotificationService();
@@ -135,6 +109,13 @@ export class ReportGenerator {
       'daily',
       report.title
     );
+
+    await info('system', '日报生成完成', {
+      userId,
+      reportId: report.id,
+      totalEntries: stats.totalEntries,
+      categories: stats.categories.length,
+    });
 
     return report;
   }
@@ -156,55 +137,21 @@ export class ReportGenerator {
       return existing;
     }
 
-    // 获取用户 AI 配置
+    // 使用深度报告生成器
+    const deepGenerator = getDeepReportGenerator();
+    const { content, summary, stats } = await deepGenerator.generateReport(userId, {
+      reportType: 'weekly',
+      reportDate,
+      maxEntriesPerCategory: 10,
+      maxCategories: 12,
+    });
+
+    // 获取AI模型信息
     const aiConfig = await getUserAIConfig(userId, db);
+    const aiModel = aiConfig?.model || 'gpt-4o';
 
-    // 计算日期范围（本周）
-    const startDate = new Date(reportDate);
-    startDate.setDate(startDate.getDate() - startDate.getDay()); // 周一
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6); // 周日
-    endDate.setHours(23, 59, 59, 999);
-
-    // 获取统计数据
-    const stats = await this.getStats(userId, startDate, endDate);
-
-    // 获取高优先级文章
-    const entries = await this.getTopEntries(userId, startDate, endDate, 20);
-
-    // 生成报告内容
-    let content: string;
-    let summary: string;
-    let highlights: string[] = [];
-    let topics: any;
-    let aiModel: string | null = null;
-
-    if (aiGenerated) {
-      // AI生成 - 使用用户配置
-      const aiService = new AIService({
-        provider: (aiConfig?.provider as any) || 'openai',
-        model: aiConfig?.model || 'gpt-4o',
-        apiKey: aiConfig?.apiKey,
-        baseURL: aiConfig?.baseURL,
-        maxTokens: 4000,
-        temperature: 0.7,
-      });
-      aiModel = aiConfig?.model || 'gpt-4o';
-
-      const aiContent = await this.generateAIContent(aiService, entries, stats, 'weekly', reportDate);
-      content = aiContent.content;
-      summary = aiContent.summary;
-      highlights = aiContent.highlights;
-      topics = aiContent.topics;
-    } else {
-      // 模板生成
-      const templateContent = await this.generateTemplateContent(entries, stats, 'weekly', reportDate);
-      content = templateContent.content;
-      summary = templateContent.summary;
-      highlights = templateContent.highlights;
-      topics = templateContent.topics;
-    }
+    // 提取高亮文章
+    const highlights = stats.topKeywords.slice(0, 5).map(k => k.keyword);
 
     // 创建报告记录
     const report = await db.report.create({
@@ -215,7 +162,10 @@ export class ReportGenerator {
         title: this.generateTitle('weekly', reportDate),
         summary,
         highlights,
-        topics,
+        topics: {
+          topTopics: stats.topKeywords.slice(0, 10),
+          categories: stats.categories.slice(0, 10).map(c => ({ name: c.name, count: c.entries.length })),
+        },
         totalEntries: stats.totalEntries,
         totalFeeds: stats.totalFeeds,
         format: 'markdown',
@@ -226,7 +176,8 @@ export class ReportGenerator {
     });
 
     // 关联文章
-    await this.linkEntriesToReport(report.id, entries);
+    const allEntries = stats.categories.flatMap(c => c.entries);
+    await this.linkEntriesToReport(report.id, allEntries.slice(0, 100));
 
     // 发送报告就绪通知
     const notificationService = getNotificationService();
@@ -236,6 +187,13 @@ export class ReportGenerator {
       'weekly',
       report.title
     );
+
+    await info('system', '周报生成完成', {
+      userId,
+      reportId: report.id,
+      totalEntries: stats.totalEntries,
+      categories: stats.categories.length,
+    });
 
     return report;
   }

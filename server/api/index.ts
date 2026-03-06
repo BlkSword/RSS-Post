@@ -17,7 +17,6 @@ import { notificationsRouter } from './notifications';
 import { aiRouter } from './ai';
 import { analyticsRouter } from './analytics';
 import { preliminaryRouter } from './preliminary';
-import { logsRouter } from './logs';
 import { queueRouter } from './queue';
 import { adminRouter } from './admin';
 
@@ -35,7 +34,6 @@ export const appRouter = router({
   ai: aiRouter,
   analytics: analyticsRouter,
   preliminary: preliminaryRouter,
-  logs: logsRouter,
   queue: queueRouter,
   admin: adminRouter,
 });
