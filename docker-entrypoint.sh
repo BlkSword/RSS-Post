@@ -29,9 +29,29 @@ fi
 : ${AI_PROVIDER:="openai"}
 : ${AI_MODEL:="gpt-4o"}
 
+# 是否启用内置 Worker（通过环境变量控制）
+: ${ENABLE_FEED_DISCOVERY_WORKER:="false"}
+
 echo "[INFO] RSS-Post 启动中..."
 echo "[INFO] NODE_ENV=$NODE_ENV"
 echo "[INFO] AI_PROVIDER=$AI_PROVIDER"
+echo "[INFO] ENABLE_FEED_DISCOVERY_WORKER=$ENABLE_FEED_DISCOVERY_WORKER"
 
-# 执行传入的命令
+# 如果启用了 Worker，在后台启动
+if [ "$ENABLE_FEED_DISCOVERY_WORKER" = "true" ]; then
+  echo "[INFO] 启动 Feed Discovery Worker..."
+  pnpm exec tsx scripts/start-feed-discovery-worker.ts &
+  WORKER_PID=$!
+  echo "[INFO] Worker PID: $WORKER_PID"
+  
+  # 设置退出时清理 Worker
+  cleanup() {
+    echo "[INFO] 停止 Worker..."
+    kill $WORKER_PID 2>/dev/null || true
+    wait $WORKER_PID 2>/dev/null || true
+  }
+  trap cleanup EXIT
+fi
+
+# 执行传入的命令（启动主应用）
 exec "$@"

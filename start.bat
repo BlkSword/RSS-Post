@@ -1,4 +1,5 @@
 @echo off
+endlocal & endlocal & endlocal & endlocal & endlocal & endlocal & endlocal & endlocal 2>nul
 setlocal enabledelayedexpansion
 
 REM =====================================================
@@ -134,21 +135,7 @@ if not exist ".env" (
     REM 使用 PowerShell 生成随机密钥并替换
     echo 正在生成安全密钥...
 
-    powershell -Command ^
-        $jwt = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $nextauth = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $encrypt = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $cron = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $pgpass = [Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $redispass = [Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; ^
-        $content = Get-Content .env -Raw; ^
-        $content = $content -replace 'your-super-secret-jwt-key-min-32-characters-long', $jwt; ^
-        $content = $content -replace 'your-super-secret-nextauth-key', $nextauth; ^
-        $content = $content -replace 'your-encryption-key-here', $encrypt; ^
-        $content = $content -replace 'your-cron-secret-key-here', $cron; ^
-        $content = $content -replace 'rss_post_password', $pgpass; ^
-        $content = $content -replace 'your-redis-password', $redispass; ^
-        $content | Set-Content .env -NoNewline
+    powershell -Command "$jwt = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $nextauth = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $encrypt = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $cron = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $pgpass = [Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $redispass = [Convert]::ToBase64String((1..16 | ForEach-Object { Get-Random -Maximum 256 })) -replace '[/+=]', ''; $content = Get-Content .env -Raw; $content = $content -replace 'your-super-secret-jwt-key-min-32-characters-long', $jwt; $content = $content -replace 'your-super-secret-nextauth-key', $nextauth; $content = $content -replace 'your-encryption-key-here', $encrypt; $content = $content -replace 'your-cron-secret-key-here', $cron; $content = $content -replace 'rss_post_password', $pgpass; $content = $content -replace 'your-redis-password', $redispass; $content | Set-Content .env -NoNewline"
 
     echo [OK] .env 文件已创建并配置安全密钥
 )
@@ -305,4 +292,6 @@ echo AI 配置：
 echo   启动后在设置页面配置 AI API Key
 echo.
 
+endlocal
+set RSS_POST_RUNNING=
 if "%INTERACTIVE%"=="true" pause

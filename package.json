@@ -27,6 +27,7 @@
     "cost-analysis": "tsx scripts/cost-analysis.ts",
     "worker:deep-analysis": "tsx scripts/start-deep-analysis-worker.ts",
     "worker:preliminary": "tsx scripts/start-preliminary-worker.ts",
+    "worker:feed-discovery": "tsx scripts/start-feed-discovery-worker.ts",
     "queue": "tsx scripts/queue-manager.ts"
   },
   "repository": {
