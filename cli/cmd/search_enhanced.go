@@ -3,13 +3,21 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/rss-post/cli/internal/db"
 	"github.com/rss-post/cli/internal/output"
-	"github.com/rss-post/cli/internal/search"
 	"github.com/spf13/cobra"
 )
+
+// addSearchEnhancements registers search sub-commands (history, suggestions, etc.).
+func addSearchEnhancements() {
+	searchCmd.AddCommand(searchHistoryCmd)
+	searchCmd.AddCommand(searchClearHistoryCmd)
+	searchCmd.AddCommand(searchSuggestCmd)
+
+	searchHistoryCmd.Flags().IntP("limit", "l", 20, "Maximum history entries")
+	searchSuggestCmd.Flags().IntP("limit", "l", 10, "Maximum suggestions")
+}
 
 var searchHistoryCmd = &cobra.Command{
 	Use:   "history",
@@ -70,94 +78,4 @@ var searchSuggestCmd = &cobra.Command{
 			fmt.Printf("  %s\n", s)
 		}
 	},
-}
-
-// Override the existing searchCmd to add history tracking
-func addSearchEnhancements() {
-	searchCmd.AddCommand(searchHistoryCmd)
-	searchCmd.AddCommand(searchClearHistoryCmd)
-	searchCmd.AddCommand(searchSuggestCmd)
-
-	searchHistoryCmd.Flags().IntP("limit", "l", 20, "Maximum history entries")
-	searchSuggestCmd.Flags().IntP("limit", "l", 10, "Maximum suggestions")
-
-	// Override Run to add history tracking
-	originalRun := searchCmd.Run
-	searchCmd.Run = func(cmd *cobra.Command, args []string) {
-		query := args[0]
-		limit, _ := cmd.Flags().GetInt("limit")
-
-		searchService := search.NewSearchService()
-		results, err := searchService.Search(query, limit)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error searching: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Save to search history
-		_ = db.SaveSearchHistory(query, len(results))
-
-		formatter := output.NewFormatter(cfg.Output.Color)
-
-		// Highlight matched fields
-		highlight := cmd.Flags().Changed("highlight") || true // default on
-
-		outputResults := make([]*output.SearchResult, len(results))
-		for i, r := range results {
-			entry := r.Entry
-			if highlight {
-				// Highlight matches in title
-				entry = highlightMatches(entry, query)
-			}
-			outputResults[i] = &output.SearchResult{
-				Entry:   entry,
-				Score:   r.Score,
-				Matched: r.Matched,
-			}
-		}
-
-		fmt.Println(formatter.FormatSearchResults(outputResults))
-
-		if len(results) > 0 {
-			fmt.Printf("\nFound %d results for '%s'\n", len(results), query)
-		} else {
-			fmt.Printf("\nNo results found for '%s'\n", query)
-		}
-	}
-
-	// Keep reference to avoid import removal
-	_ = originalRun
-}
-
-func highlightMatches(entry *db.Entry, query string) *db.Entry {
-	if entry == nil {
-		return entry
-	}
-
-	// Clone to avoid modifying original
-	cloned := *entry
-	queryLower := strings.ToLower(query)
-
-	if strings.Contains(strings.ToLower(cloned.Title), queryLower) {
-		cloned.Title = highlightText(cloned.Title, query)
-	}
-
-	return &cloned
-}
-
-func highlightText(text, query string) string {
-	if query == "" || text == "" {
-		return text
-	}
-	lower := strings.ToLower(text)
-	queryLower := strings.ToLower(query)
-	idx := strings.Index(lower, queryLower)
-	if idx < 0 {
-		return text
-	}
-	end := idx + len(query)
-	if end > len(text) {
-		return text
-	}
-	return text[:idx] + ">>>" + text[idx:end] + "<<<" + text[end:]
 }

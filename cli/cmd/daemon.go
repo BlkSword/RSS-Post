@@ -162,13 +162,14 @@ func runFullPipeline(fetcher *rss.Fetcher, analyzer *ai.Analyzer, cfg *config.Co
 
 		engine := rules.NewEngine()
 		ruleActions := 0
+		enabledRules, _ := rules.ListRules(true)
 		entries, _ := db.ListEntries(&db.EntryFilter{
 			Limit:     50,
 			OrderBy:   "created_at",
 			OrderDesc: true,
 		})
 		for _, entry := range entries {
-			count, _ := engine.ApplyRules(entry)
+			count := engine.ApplyRulesBatch(enabledRules, entry)
 			ruleActions += count
 		}
 		status.RulesApplied += ruleActions
@@ -197,7 +198,7 @@ func runFullPipeline(fetcher *rss.Fetcher, analyzer *ai.Analyzer, cfg *config.Co
 	status.CurrentStep = "report"
 	db.SaveDaemonStatus(status)
 
-	checkAndSendScheduledReports(cfg, logf)
+	checkAndSendScheduledReports(cfg, status, logf)
 
 	status.CurrentStep = "idle"
 	status.LastPipelineAt = time.Now()
@@ -237,12 +238,9 @@ func analyzePendingEntries(analyzer *ai.Analyzer, cfg *config.Config, logf func(
 		}
 		successCount++
 		logf("  AI: ✓ Entry %d scored %d", entry.ID, entry.AIScore)
-		if status != nil {
-			status.AnalyzedSuccess++
-			db.SaveDaemonStatus(status)
-		}
 	}
 	if status != nil {
+		status.AnalyzedSuccess += successCount
 		status.AnalyzedFailed += failCount
 		status.LastAnalysisAt = time.Now()
 		db.SaveDaemonStatus(status)
@@ -251,18 +249,35 @@ func analyzePendingEntries(analyzer *ai.Analyzer, cfg *config.Config, logf func(
 	logf("  AI: %d analyzed, %d failed", successCount, failCount)
 }
 
-func checkAndSendScheduledReports(cfg *config.Config, logf func(string, ...interface{})) {
+// checkAndSendScheduledReports fires a scheduled report when its time has
+// arrived today and we haven't produced one yet. Unlike a "same-minute window"
+// check, this is decoupled from the exact tick the pipeline lands on, so a
+// long analysis pass can no longer cause the report to be silently skipped.
+func checkAndSendScheduledReports(cfg *config.Config, status *db.DaemonStatus, logf func(string, ...interface{})) {
 	scfg := &cfg.Schedule
 	if !scfg.Enabled {
 		return
 	}
 
 	now := time.Now()
-	target := time.Date(now.Year(), now.Month(), now.Day(), scfg.Hour, scfg.Minute, 0, 0, now.Location())
+	today := now.Format("2006-01-02")
 
-	// Check if we're within the same minute as the scheduled time
-	diff := now.Sub(target)
-	if diff < 0 || diff >= time.Minute {
+	// Idempotency: already produced a report for today (daily) / this Monday (weekly).
+	if status.LastReportDate == today {
+		return
+	}
+
+	// Weekly reports only fire on Mondays, matching calcNextRun in schedule.go.
+	if scfg.Type == "weekly" && now.Weekday() != time.Monday {
+		return
+	}
+
+	// Trigger once we've passed today's scheduled time. Using ">= scheduled time"
+	// instead of "within the scheduled minute" makes this robust to pipeline
+	// timing, including the case where a slow analysis run pushes the check
+	// past the target minute.
+	target := time.Date(now.Year(), now.Month(), now.Day(), scfg.Hour, scfg.Minute, 0, 0, now.Location())
+	if now.Before(target) {
 		return
 	}
 
@@ -285,14 +300,25 @@ func checkAndSendScheduledReports(cfg *config.Config, logf func(string, ...inter
 
 	logf("  Report: %d articles, %d analyzed", rpt.Stats.TotalEntries, rpt.Stats.AnalyzedEntries)
 
-	if scfg.SendMail && cfg.Email.Enabled && len(cfg.Email.To) > 0 {
-		logf("  Sending email to %v...", cfg.Email.To)
-		if err := generator.SendEmail(rpt, nil); err != nil {
-			logf("  Email error: %v", err)
+	// Send email if requested. On failure we return WITHOUT marking the report
+	// as sent, so the next pipeline tick retries instead of silently dropping it.
+	if scfg.SendMail {
+		if !cfg.Email.Enabled || len(cfg.Email.To) == 0 {
+			logf("  ⚠ send_mail=true but email not configured; report generated but not sent")
 		} else {
+			logf("  Sending email to %v...", cfg.Email.To)
+			if err := generator.SendEmail(rpt, nil); err != nil {
+				logf("  Email error: %v (will retry next tick)", err)
+				return
+			}
 			logf("  Email sent!")
 		}
 	}
+
+	// Mark as done for today so subsequent ticks don't resend.
+	status.LastReportDate = today
+	status.LastReportAt = now
+	status.ReportsSent++
 }
 
 var daemonStatusCmd = &cobra.Command{

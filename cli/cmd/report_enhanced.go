@@ -4,13 +4,19 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/rss-post/cli/internal/db"
 	"github.com/rss-post/cli/internal/output"
-	"github.com/rss-post/cli/internal/report"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	reportCmd.AddCommand(reportListCmd)
+	reportCmd.AddCommand(reportShowCmd)
+	reportCmd.AddCommand(reportDeleteCmd)
+
+	reportListCmd.Flags().IntP("limit", "l", 20, "Maximum reports to show")
+}
 
 var reportListCmd = &cobra.Command{
 	Use:   "list",
@@ -70,76 +76,4 @@ var reportDeleteCmd = &cobra.Command{
 		}
 		fmt.Printf("Report %d deleted.\n", id)
 	},
-}
-
-func init() {
-	reportCmd.AddCommand(reportListCmd)
-	reportCmd.AddCommand(reportShowCmd)
-	reportCmd.AddCommand(reportDeleteCmd)
-
-	reportListCmd.Flags().IntP("limit", "l", 20, "Maximum reports to show")
-
-	// Add --save flag to daily and weekly commands
-	reportDailyCmd.Flags().Bool("save", false, "Save report to database (default: auto-save)")
-	reportWeeklyCmd.Flags().Bool("save", false, "Save report to database (default: auto-save)")
-}
-
-// addReportDBSave enhances the report generation to save to DB.
-func addReportDBSave() {
-	enhanceReportSaveCmd(reportDailyCmd, "daily")
-	enhanceReportSaveCmd(reportWeeklyCmd, "weekly")
-}
-
-func enhanceReportSaveCmd(cmd *cobra.Command, reportType string) {
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		// Always save to DB, --save flag is implicit
-		generator := report.NewGenerator(cfg)
-		var rpt *report.Report
-		var err error
-
-		date := time.Now()
-		if len(args) > 0 {
-			parsed, err2 := time.Parse("2006-01-02", args[0])
-			if err2 == nil {
-				date = parsed
-			}
-		}
-
-		if reportType == "daily" {
-			rpt, err = generator.GenerateDaily(date)
-		} else {
-			rpt, err = generator.GenerateWeekly(date)
-		}
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating report: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Output the report
-		outputPath, _ := cmd.Flags().GetString("output")
-		if outputPath != "" {
-			_ = generator.SaveReport(rpt, outputPath)
-			fmt.Printf("Report saved to %s\n", outputPath)
-		} else {
-			fmt.Println(rpt.Content)
-		}
-
-		// Save to DB
-		htmlContent := ""
-		if generator != nil {
-			htmlContent = generator.RenderHTML(rpt)
-		}
-		_, err = db.SaveReportToDB(
-			reportType,
-			rpt.Period,
-			rpt.Content,
-			htmlContent,
-			rpt.Stats.TotalEntries,
-			rpt.Stats.AvgAIScore,
-		)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save report to DB: %v\n", err)
-		}
-	}
 }

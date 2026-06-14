@@ -401,13 +401,40 @@ func countWords(content string) int {
 	if len(content) == 0 {
 		return 0
 	}
-	count := 1
-	for _, c := range content {
-		if c == ' ' || c == '\n' || c == '\t' {
+
+	runes := []rune(content)
+	count := 0
+	inWord := false
+
+	for _, r := range runes {
+		if isCJK(r) {
+			// Each CJK character counts as a word
 			count++
+			inWord = false
+		} else if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			inWord = false
+		} else {
+			if !inWord {
+				count++
+				inWord = true
+			}
 		}
 	}
 	return count
+}
+
+// isCJK returns true if the rune is in a CJK (Chinese/Japanese/Korean) Unicode block.
+func isCJK(r rune) bool {
+	return (r >= 0x4E00 && r <= 0x9FFF) ||   // CJK Unified Ideographs
+		(r >= 0x3400 && r <= 0x4DBF) ||         // CJK Unified Ideographs Extension A
+		(r >= 0x3040 && r <= 0x309F) ||         // Hiragana
+		(r >= 0x30A0 && r <= 0x30FF) ||         // Katakana
+		(r >= 0xAC00 && r <= 0xD7AF) ||         // Hangul Syllables
+		(r >= 0xF900 && r <= 0xFAFF) ||         // CJK Compatibility Ideographs
+		(r >= 0x2E80 && r <= 0x2EFF) ||         // CJK Radicals Supplement
+		(r >= 0xFF00 && r <= 0xFFEF) ||         // Halfwidth/Fullwidth Forms
+		(r >= 0x3000 && r <= 0x303F) ||         // CJK Symbols and Punctuation
+		(r >= 0x20000 && r <= 0x2A6DF)          // CJK Unified Ideographs Extension B
 }
 
 // makeProxyURL builds a proxy URL string from config.

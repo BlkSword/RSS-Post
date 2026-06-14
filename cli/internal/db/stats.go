@@ -118,48 +118,42 @@ func GetSearchSuggestions(prefix string, limit int) ([]string, error) {
 	return suggestions, nil
 }
 
-// EnsureSearchTables creates search-related tables.
+// EnsureSearchTables creates search-related indexes (tables created in db.Init()).
 func EnsureSearchTables() error {
-	_, err := DB.Exec(`
-		CREATE TABLE IF NOT EXISTS search_history (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			query TEXT NOT NULL,
-			result_count INTEGER DEFAULT 0,
-			searched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		return err
-	}
-	_, err = DB.Exec(`CREATE INDEX IF NOT EXISTS idx_search_history_searched_at ON search_history(searched_at)`)
+	_, err := DB.Exec(`CREATE INDEX IF NOT EXISTS idx_search_history_searched_at ON search_history(searched_at)`)
 	return err
 }
 
-// EnsureReportTables creates report-related tables.
+// EnsureReportTables is a no-op; the reports table is created in db.Init().
 func EnsureReportTables() error {
-	_, err := DB.Exec(`
-		CREATE TABLE IF NOT EXISTS reports (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			type TEXT,
-			date TEXT,
-			content TEXT,
-			html_content TEXT,
-			entry_count INTEGER DEFAULT 0,
-			avg_score REAL DEFAULT 0,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	return err
+	return nil
 }
 
-// SaveReportToDB saves a generated report to the database.
+// SaveReportToDB saves a generated report to the database, replacing any
+// existing report of the same type and period so repeated runs don't
+// accumulate duplicate rows (idempotent).
 func SaveReportToDB(reportType, date, content, htmlContent string, entryCount int, avgScore float64) (int64, error) {
-	result, err := DB.Exec(
+	tx, err := DB.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Remove any prior report for the same type+period first.
+	if _, err := tx.Exec(`DELETE FROM reports WHERE type = ? AND date = ?`, reportType, date); err != nil {
+		return 0, err
+	}
+
+	result, err := tx.Exec(
 		`INSERT INTO reports (type, date, content, html_content, entry_count, avg_score)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		reportType, date, content, htmlContent, entryCount, avgScore,
 	)
 	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 	return result.LastInsertId()

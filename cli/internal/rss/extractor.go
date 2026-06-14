@@ -12,6 +12,14 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// sharedExtractorTransport provides connection pooling for FetchFullContent calls.
+var sharedExtractorTransport = &http.Transport{
+	MaxIdleConns:        20,
+	MaxIdleConnsPerHost: 10,
+	IdleConnTimeout:     90 * time.Second,
+	MaxConnsPerHost:     10,
+}
+
 // siteSelectors maps hostnames to CSS selectors for site-specific content extraction.
 var siteSelectors = map[string][]string{
 	// 量子位
@@ -421,8 +429,14 @@ func FetchFullContent(rawURL string, timeout time.Duration, userAgent string, pr
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,*/*")
 
-	transport := &http.Transport{}
+	transport := sharedExtractorTransport
 	if proxyURL != "" {
+		// Create a per-request transport with proxy; shared transport is not proxied.
+		transport = &http.Transport{
+			MaxIdleConns:        20,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		}
 		if pu, err := url.Parse(proxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(pu)
 		}

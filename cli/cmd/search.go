@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rss-post/cli/internal/db"
 	"github.com/rss-post/cli/internal/output"
 	"github.com/rss-post/cli/internal/search"
 	"github.com/spf13/cobra"
@@ -25,9 +26,11 @@ var searchCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Save to search history
+		_ = db.SaveSearchHistory(query, len(results))
+
 		formatter := output.NewFormatter(cfg.Output.Color)
 
-		// Convert search.SearchResult to output.SearchResult
 		outputResults := make([]*output.SearchResult, len(results))
 		for i, r := range results {
 			outputResults[i] = &output.SearchResult{
@@ -41,6 +44,8 @@ var searchCmd = &cobra.Command{
 
 		if len(results) > 0 {
 			fmt.Printf("\nFound %d results for '%s'\n", len(results), query)
+		} else {
+			fmt.Printf("\nNo results found for '%s'\n", query)
 		}
 	},
 }

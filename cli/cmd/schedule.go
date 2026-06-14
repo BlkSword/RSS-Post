@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rss-post/cli/internal/config"
+	"github.com/rss-post/cli/internal/db"
 	"github.com/rss-post/cli/internal/report"
 	"github.com/spf13/cobra"
 )
@@ -46,6 +47,13 @@ Example config:
 		if scfg.Hour < 0 || scfg.Hour > 23 {
 			fmt.Fprintf(os.Stderr, "Invalid schedule.hour: must be 0-23, got %d\n", scfg.Hour)
 			os.Exit(1)
+		}
+
+		// Warn if the daemon is already running, since it also generates
+		// scheduled reports — running both risks duplicate emails.
+		if db.IsDaemonRunning() {
+			fmt.Fprintln(os.Stderr, "⚠ A daemon is already running and also handles scheduled reports.")
+			fmt.Fprintln(os.Stderr, "  Running this scheduler too may send duplicate reports.")
 		}
 
 		fmt.Printf("Scheduler started (%s at %02d:%02d, send_mail=%v)\n",
@@ -100,12 +108,13 @@ Example config:
 					}
 				}
 
-				// Calculate next run
+				// Calculate next run. calcNextRun always returns a future time,
+				// so this guard only defends against clock skew pulling it into
+				// the past — it never busy-loops.
 				nextRun = calcNextRun(scfg)
 				waitDuration = time.Until(nextRun)
-				for waitDuration < time.Minute {
-					nextRun = calcNextRun(scfg)
-					waitDuration = time.Until(nextRun)
+				if waitDuration < time.Minute {
+					waitDuration = time.Minute
 				}
 				fmt.Printf("\nNext run: %s (in %s)\n", nextRun.Format("2006-01-02 15:04:05"), waitDuration.Round(time.Second))
 

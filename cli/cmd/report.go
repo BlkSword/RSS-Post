@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rss-post/cli/internal/db"
 	"github.com/rss-post/cli/internal/email"
 	"github.com/rss-post/cli/internal/report"
 	"github.com/spf13/cobra"
@@ -151,6 +152,19 @@ func generateAndOutput(cmd *cobra.Command, genFunc func(*report.Generator) (*rep
 		fmt.Printf("Report saved to %s\n", outputPath)
 	} else {
 		fmt.Println(rpt.Content)
+	}
+
+	// Save to DB (always, idempotent)
+	htmlContent := generator.RenderHTML(rpt)
+	if _, err := db.SaveReportToDB(
+		rpt.ReportType,
+		rpt.Period,
+		rpt.Content,
+		htmlContent,
+		rpt.Stats.TotalEntries,
+		rpt.Stats.AvgAIScore,
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save report to DB: %v\n", err)
 	}
 
 	if aiSummary {

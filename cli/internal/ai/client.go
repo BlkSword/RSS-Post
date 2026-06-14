@@ -15,22 +15,37 @@ import (
 // Global rate limiter shared across all AI calls (preliminary + deep analysis).
 // Default: 3 requests per minute — conservative to avoid provider rate limits.
 var (
+	limiterMu     sync.RWMutex
 	defaultLimiter *RateLimiter
-	limiterOnce   sync.Once
+	limiterInit   bool
 )
 
 // GetLimiter returns the global rate limiter, initializing it on first call.
 func GetLimiter() *RateLimiter {
-	limiterOnce.Do(func() {
+	limiterMu.RLock()
+	if limiterInit {
+		l := defaultLimiter
+		limiterMu.RUnlock()
+		return l
+	}
+	limiterMu.RUnlock()
+
+	limiterMu.Lock()
+	defer limiterMu.Unlock()
+	if !limiterInit {
 		defaultLimiter = NewRateLimiter(3) // default 3 RPM
-	})
+		limiterInit = true
+	}
 	return defaultLimiter
 }
 
 // SetLimiter replaces the global rate limiter with a custom RPM.
+// Must be called before GetLimiter to take effect; safe for concurrent use.
 func SetLimiter(rpm int) {
-	limiterOnce.Do(func() {}) // ensure once is "done"
+	limiterMu.Lock()
+	defer limiterMu.Unlock()
 	defaultLimiter = NewRateLimiter(rpm)
+	limiterInit = true
 }
 
 type Client struct {

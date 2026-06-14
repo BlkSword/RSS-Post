@@ -46,7 +46,6 @@ func Execute() {
 	// Register all subcommands
 	addBulkCommands()
 	addSearchEnhancements()
-	addReportDBSave()
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -95,9 +95,10 @@ func applyRulesToNewEntries(feedID int64) int {
 	}
 
 	engine := rules.NewEngine()
+	enabledRules, _ := rules.ListRules(true)
 	totalActions := 0
 	for _, entry := range entries {
-		count, _ := engine.ApplyRules(entry)
+		count := engine.ApplyRulesBatch(enabledRules, entry)
 		totalActions += count
 	}
 	return totalActions

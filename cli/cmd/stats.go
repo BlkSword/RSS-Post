@@ -144,7 +144,7 @@ var statsLangCmd = &cobra.Command{
 		if days > 0 {
 			fmt.Printf(" (last %d days)", days)
 		}
-		fmt.Println("\n")
+		fmt.Print("\n\n")
 		formatter := output.NewFormatter(cfg.Output.Color)
 		fmt.Println(formatter.FormatLanguageStats(stats))
 	},

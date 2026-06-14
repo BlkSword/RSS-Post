@@ -7,6 +7,58 @@ import (
 	"time"
 )
 
+// entrySelectColumns is the canonical SELECT clause for entries, used by all query functions.
+// Any schema change only needs to be updated here and in scanEntry.
+const entrySelectColumns = `SELECT id, feed_id, title, url, content, summary, author,
+       published_at, created_at, content_hash, is_read, is_starred,
+       COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
+       COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
+       COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
+       COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
+       COALESCE(open_source_info, ''),
+       COALESCE(programming_language, '')`
+
+// rowScanner abstracts both *sql.Row and *sql.Rows for Scan calls.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanEntry scans an entry row into the given Entry, handling publishedAt nullability.
+// Used by both single-row queries (QueryRow) and multi-row queries (rows.Next loop).
+func scanEntry(row rowScanner, e *Entry) error {
+	var publishedAt sql.NullTime
+	err := row.Scan(
+		&e.ID, &e.FeedID, &e.Title, &e.URL, &e.Content,
+		&e.Summary, &e.Author, &publishedAt, &e.CreatedAt,
+		&e.ContentHash, &e.IsRead, &e.IsStarred, &e.AISummary,
+		&e.AIKeywords, &e.AISentiment, &e.AICategory,
+		&e.AIImportanceScore, &e.AIOneLineSummary, &e.AIMainPoints,
+		&e.AIKeyQuotes, &e.AIScoreDimensions, &e.AIAnalysisModel,
+		&e.AIProcessingTime, &e.WordCount, &e.ReadingTime,
+		&e.AIScore, &e.OpenSourceInfo, &e.ProgrammingLanguage,
+	)
+	if err != nil {
+		return err
+	}
+	if publishedAt.Valid {
+		e.PublishedAt = &publishedAt.Time
+	}
+	return nil
+}
+
+// scanEntries loops over rows, scanning each into entries using scanEntry.
+func scanEntries(rows *sql.Rows) ([]*Entry, error) {
+	var entries []*Entry
+	for rows.Next() {
+		entry := &Entry{}
+		if err := scanEntry(rows, entry); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
+}
+
 func CreateEntry(entry *Entry) (*Entry, error) {
 	now := time.Now()
 	result, err := DB.Exec(`
@@ -44,69 +96,19 @@ func CreateEntry(entry *Entry) (*Entry, error) {
 
 func GetEntry(id int64) (*Entry, error) {
 	entry := &Entry{}
-	var publishedAt sql.NullTime
-	err := DB.QueryRow(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries WHERE id = ?
-	`, id).Scan(
-		&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-		&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-		&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-		&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-		&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-		&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-		&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-		&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-	)
+	err := scanEntry(DB.QueryRow(entrySelectColumns+` FROM entries WHERE id = ?`, id), entry)
 	if err != nil {
 		return nil, err
 	}
-
-	if publishedAt.Valid {
-		entry.PublishedAt = &publishedAt.Time
-	}
-
 	return entry, nil
 }
 
 func GetEntryByHash(contentHash string) (*Entry, error) {
 	entry := &Entry{}
-	var publishedAt sql.NullTime
-	err := DB.QueryRow(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries WHERE content_hash = ?
-	`, contentHash).Scan(
-		&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-		&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-		&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-		&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-		&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-		&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-		&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-		&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-	)
+	err := scanEntry(DB.QueryRow(entrySelectColumns+` FROM entries WHERE content_hash = ?`, contentHash), entry)
 	if err != nil {
 		return nil, err
 	}
-
-	if publishedAt.Valid {
-		entry.PublishedAt = &publishedAt.Time
-	}
-
 	return entry, nil
 }
 
@@ -122,6 +124,25 @@ type EntryFilter struct {
 	OrderDesc   bool
 }
 
+// allowedOrderBy is the whitelist of column names allowed in ORDER BY clauses.
+var allowedOrderBy = map[string]bool{
+	"id":                   true,
+	"feed_id":              true,
+	"title":                true,
+	"url":                  true,
+	"author":               true,
+	"published_at":         true,
+	"created_at":           true,
+	"updated_at":           true,
+	"is_read":              true,
+	"is_starred":           true,
+	"ai_score":             true,
+	"ai_importance_score":  true,
+	"ai_retry_count":       true,
+	"reading_time":         true,
+	"word_count":           true,
+}
+
 func ListEntries(filter *EntryFilter) ([]*Entry, error) {
 	if filter == nil {
 		filter = &EntryFilter{}
@@ -131,6 +152,11 @@ func ListEntries(filter *EntryFilter) ([]*Entry, error) {
 	}
 	if filter.OrderBy == "" {
 		filter.OrderBy = "published_at"
+	}
+
+	// Validate OrderBy against whitelist to prevent SQL injection
+	if !allowedOrderBy[filter.OrderBy] {
+		return nil, fmt.Errorf("invalid order column: %s", filter.OrderBy)
 	}
 
 	var conditions []string
@@ -157,17 +183,7 @@ func ListEntries(filter *EntryFilter) ([]*Entry, error) {
 		args = append(args, strings.ToUpper(*filter.Lang))
 	}
 
-	query := `
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries
-	`
+	query := entrySelectColumns + ` FROM entries`
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
@@ -186,32 +202,7 @@ func ListEntries(filter *EntryFilter) ([]*Entry, error) {
 	}
 	defer rows.Close()
 
-	var entries []*Entry
-	for rows.Next() {
-		entry := &Entry{}
-		var publishedAt sql.NullTime
-		err := rows.Scan(
-			&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-			&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-			&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-			&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-			&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-			&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-			&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-			&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if publishedAt.Valid {
-			entry.PublishedAt = &publishedAt.Time
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
+	return scanEntries(rows)
 }
 
 func MarkEntryRead(id int64) error {
@@ -282,51 +273,16 @@ func GetRetryAnalysisEntries(limit, maxRetries int) ([]*Entry, error) {
 		maxRetries = 3
 	}
 
-	rows, err := DB.Query(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries
+	rows, err := DB.Query(entrySelectColumns+` FROM entries
 		WHERE ai_retry_count > 0 AND ai_retry_count < ? AND (ai_summary IS NULL OR ai_summary = '')
 		ORDER BY ai_retry_count ASC, published_at DESC
-		LIMIT ?
-	`, maxRetries, limit)
+		LIMIT ?`, maxRetries, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var entries []*Entry
-	for rows.Next() {
-		entry := &Entry{}
-		var publishedAt sql.NullTime
-		err := rows.Scan(
-			&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-			&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-			&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-			&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-			&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-			&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-			&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-			&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if publishedAt.Valid {
-			entry.PublishedAt = &publishedAt.Time
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
+	return scanEntries(rows)
 }
 
 func GetPendingAnalysisEntries(limit int, perFeed int) ([]*Entry, error) {
@@ -337,16 +293,7 @@ func GetPendingAnalysisEntries(limit int, perFeed int) ([]*Entry, error) {
 		perFeed = 2
 	}
 
-	rows, err := DB.Query(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries
+	rows, err := DB.Query(entrySelectColumns+` FROM entries
 		WHERE (ai_summary IS NULL OR ai_summary = '')
 		  AND deleted = 0
 		  AND COALESCE(ai_retry_count, 0) < 3
@@ -360,39 +307,13 @@ func GetPendingAnalysisEntries(limit int, perFeed int) ([]*Entry, error) {
 		    ) WHERE rn <= ?
 		  )
 		ORDER BY created_at ASC
-		LIMIT ?
-	`, perFeed, limit)
+		LIMIT ?`, perFeed, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var entries []*Entry
-	for rows.Next() {
-		entry := &Entry{}
-		var publishedAt sql.NullTime
-		err := rows.Scan(
-			&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-			&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-			&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-			&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-			&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-			&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-			&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-			&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if publishedAt.Valid {
-			entry.PublishedAt = &publishedAt.Time
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
+	return scanEntries(rows)
 }
 
 func GetEntryCount() (int, error) {
@@ -407,96 +328,26 @@ func SearchEntries(query string, limit int) ([]*Entry, error) {
 	}
 
 	searchQuery := "%" + query + "%"
-	rows, err := DB.Query(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries
+	rows, err := DB.Query(entrySelectColumns+` FROM entries
 		WHERE title LIKE ? OR content LIKE ? OR summary LIKE ?
 		ORDER BY published_at DESC
-		LIMIT ?
-	`, searchQuery, searchQuery, searchQuery, limit)
+		LIMIT ?`, searchQuery, searchQuery, searchQuery, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var entries []*Entry
-	for rows.Next() {
-		entry := &Entry{}
-		var publishedAt sql.NullTime
-		err := rows.Scan(
-			&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-			&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-			&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-			&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-			&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-			&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-			&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-			&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if publishedAt.Valid {
-			entry.PublishedAt = &publishedAt.Time
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
+	return scanEntries(rows)
 }
 
 func GetEntriesForReport(startDateStr, endDateStr string) ([]*Entry, error) {
-	rows, err := DB.Query(`
-		SELECT id, feed_id, title, url, content, summary, author,
-			   published_at, created_at, content_hash, is_read, is_starred,
-			   COALESCE(ai_summary, ''), COALESCE(ai_keywords, ''), COALESCE(ai_sentiment, ''), COALESCE(ai_category, ''),
-			   COALESCE(ai_importance_score, 0), COALESCE(ai_one_line_summary, ''), COALESCE(ai_main_points, ''),
-			   COALESCE(ai_key_quotes, ''), COALESCE(ai_score_dimensions, ''), COALESCE(ai_analysis_model, ''),
-			   COALESCE(ai_processing_time, 0), word_count, reading_time, COALESCE(ai_score, 0),
-			   COALESCE(open_source_info, ''),
-			   COALESCE(programming_language, '')
-		FROM entries
+	rows, err := DB.Query(entrySelectColumns+` FROM entries
 		WHERE substr(published_at, 1, 10) >= ? AND substr(published_at, 1, 10) < ? AND ai_summary IS NOT NULL AND ai_summary != ''
-		ORDER BY ai_score DESC, published_at DESC
-	`, startDateStr, endDateStr)
+		ORDER BY ai_score DESC, published_at DESC`, startDateStr, endDateStr)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var entries []*Entry
-	for rows.Next() {
-		entry := &Entry{}
-		var publishedAt sql.NullTime
-		err := rows.Scan(
-			&entry.ID, &entry.FeedID, &entry.Title, &entry.URL, &entry.Content,
-			&entry.Summary, &entry.Author, &publishedAt, &entry.CreatedAt,
-			&entry.ContentHash, &entry.IsRead, &entry.IsStarred, &entry.AISummary,
-			&entry.AIKeywords, &entry.AISentiment, &entry.AICategory,
-			&entry.AIImportanceScore, &entry.AIOneLineSummary, &entry.AIMainPoints,
-			&entry.AIKeyQuotes, &entry.AIScoreDimensions, &entry.AIAnalysisModel,
-			&entry.AIProcessingTime, &entry.WordCount, &entry.ReadingTime,
-			&entry.AIScore, &entry.OpenSourceInfo, &entry.ProgrammingLanguage,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if publishedAt.Valid {
-			entry.PublishedAt = &publishedAt.Time
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
+	return scanEntries(rows)
 }

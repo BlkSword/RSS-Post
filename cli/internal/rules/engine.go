@@ -223,13 +223,22 @@ func (e *Engine) removeTagFromEntry(entry *db.Entry, tag string) error {
 	return err
 }
 
-// ApplyRules applies all enabled rules to a single entry.
+// ApplyRules applies all enabled rules to a single entry. Prefer ApplyRulesBatch for multi-entry use.
 func (e *Engine) ApplyRules(entry *db.Entry) (int, error) {
 	rules, err := ListRules(true)
 	if err != nil {
 		return 0, err
 	}
+	return e.applyRulesWithSet(rules, entry), nil
+}
 
+// ApplyRulesBatch applies pre-loaded rules to multiple entries. Pre-load rules with ListRules(true),
+// then pass to this method for each entry to avoid N+1 database queries.
+func (e *Engine) ApplyRulesBatch(rules []*Rule, entry *db.Entry) int {
+	return e.applyRulesWithSet(rules, entry)
+}
+
+func (e *Engine) applyRulesWithSet(rules []*Rule, entry *db.Entry) int {
 	appliedCount := 0
 	for _, rule := range rules {
 		if e.MatchEntry(rule, entry) {
@@ -241,8 +250,7 @@ func (e *Engine) ApplyRules(entry *db.Entry) (int, error) {
 			appliedCount++
 		}
 	}
-
-	return appliedCount, nil
+	return appliedCount
 }
 
 // ListRules lists rules from the database.
@@ -445,36 +453,14 @@ func ApplyAllRules(limit int) (int, error) {
 	return totalApplied, nil
 }
 
-// EnsureTables creates rules-related tables if they don't exist.
+// EnsureTables creates rules-related tables and indexes if they don't exist.
+// Tables are created in db.Init(); this function adds only the indexes as a safety net.
 func EnsureTables() error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS rules (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			description TEXT,
-			enabled BOOLEAN DEFAULT 1,
-			conditions TEXT,
-			actions TEXT,
-			priority INTEGER DEFAULT 0,
-			match_count INTEGER DEFAULT 0,
-			last_matched_at DATETIME,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS rule_logs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			rule_id INTEGER NOT NULL,
-			entry_id INTEGER NOT NULL,
-			action TEXT,
-			matched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (rule_id) REFERENCES rules(id),
-			FOREIGN KEY (entry_id) REFERENCES entries(id)
-		)`,
+	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_rule_logs_rule_id ON rule_logs(rule_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_rule_logs_entry_id ON rule_logs(entry_id)`,
 	}
-
-	for _, q := range queries {
+	for _, q := range indexes {
 		if _, err := db.DB.Exec(q); err != nil {
 			return err
 		}

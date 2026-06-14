@@ -17,6 +17,7 @@ type DaemonStatus struct {
 	LastFetchAt      time.Time `json:"last_fetch_at"`
 	LastAnalysisAt   time.Time `json:"last_analysis_at"`
 	LastReportAt     time.Time `json:"last_report_at"`
+	LastReportDate   string    `json:"last_report_date"` // "2006-01-02" of last sent scheduled report; dedup key
 	FetchTotal       int       `json:"fetch_total"`
 	FetchNewEntries  int       `json:"fetch_new_entries"`
 	FetchFailures    int       `json:"fetch_failures"`
@@ -115,4 +116,31 @@ func ClearDaemonStatus() {
 	if statusPath != "" {
 		os.Remove(statusPath)
 	}
+}
+
+// IsDaemonRunning reports whether a daemon process appears to be alive,
+// based on the persisted status file. Used to warn about duplicate schedulers.
+func IsDaemonRunning() bool {
+	status, err := LoadDaemonStatus()
+	if err != nil || status == nil {
+		return false
+	}
+	if !status.Running {
+		return false
+	}
+	// Stale guard: if the daemon hasn't updated its status recently, it
+	// probably crashed without clearing the status file.
+	heartbeat := time.Duration(status.CheckInterval) * time.Minute
+	if heartbeat <= 0 {
+		heartbeat = 2 * time.Minute
+	}
+	deadline := heartbeat * 3 // tolerate a few missed ticks
+	reference := status.LastRunAt
+	if reference.IsZero() {
+		reference = status.StartedAt
+	}
+	if !reference.IsZero() && time.Since(reference) > deadline {
+		return false
+	}
+	return true
 }

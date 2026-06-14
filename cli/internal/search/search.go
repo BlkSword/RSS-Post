@@ -1,6 +1,7 @@
 package search
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/rss-post/cli/internal/db"
@@ -89,14 +90,10 @@ func (s *SearchService) rankResults(entries []*db.Entry, query string, limit int
 		}
 	}
 
-	// Sort by score (simple bubble sort for small datasets)
-	for i := 0; i < len(results)-1; i++ {
-		for j := i + 1; j < len(results); j++ {
-			if results[j].Score > results[i].Score {
-				results[i], results[j] = results[j], results[i]
-			}
-		}
-	}
+	// Sort by score descending
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
 
 	// Limit results
 	if len(results) > limit {

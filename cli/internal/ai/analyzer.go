@@ -275,9 +275,16 @@ func parseAnalysisResult(response string) (*AnalysisResult, error) {
 	jsonStr := extractJSON(response)
 	var result AnalysisResult
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse AI response as JSON: %w\nRaw response (first 500 chars): %s", err, truncateString(response, 500))
 	}
 	return &result, nil
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen]
 }
 
 func extractJSON(response string) string {
